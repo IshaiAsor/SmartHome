@@ -3,7 +3,8 @@ const config = require('../config/env.config');
 
 class MqttService {
   constructor() {
-    this.client = mqtt.connect(config.mqtt.url, config.mqtt.options);
+
+    this.client = mqtt.connect(config.mqtt.brokerUrl,{username : config.mqtt.username, password: config.mqtt.password});
 
     this.client.on('connect', () => {
       console.log('✅ Connected to MQTT Broker');
