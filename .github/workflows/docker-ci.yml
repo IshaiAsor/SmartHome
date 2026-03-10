@@ -8,6 +8,14 @@ jobs:
   build-and-push:
     runs-on: ubuntu-latest
     steps:
+	# 1. This allows the Intel runner to build for ARM64
+      - name: Set up QEMU
+        uses: docker/setup-qemu-action@v3
+
+      # 2. This enables the 'platforms' feature
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
       - name: Checkout repository
         uses: actions/checkout@v3
 
