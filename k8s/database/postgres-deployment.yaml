@@ -1,0 +1,28 @@
+# k8s/database/postgres-deployment.yaml
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: postgres-db
+  namespace: iot-system
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: postgres
+  template:
+    metadata:
+      labels:
+        app: postgres
+    spec:
+      containers:
+      - name: postgres
+        image: postgres:15
+        env:
+        - name: POSTGRES_USER
+          value: "iot_admin"
+        - name: POSTGRES_PASSWORD
+          value: "super_secret_password"
+        - name: POSTGRES_DB
+          value: "iot_data"
+        ports:
+        - containerPort: 5432

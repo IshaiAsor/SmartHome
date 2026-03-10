@@ -59,6 +59,17 @@ class MqttService {
     console.log(`📤 Publishing MQTT -> ${topic}: ${payload}`);
     this.client.publish(topic, payload);
   }
+
+ addUser(userName, password) {
+   const addUserCmd = {
+    commands: [{
+      command: "createClient",
+      username: "new_user_123",
+      password: "secure_password"
+    }]
+  };
+  adminClient.publish('$CONTROL/dynamic-security/v1', JSON.stringify(command));
+ }
 }
 
 module.exports = new MqttService();

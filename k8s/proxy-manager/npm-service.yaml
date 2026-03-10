@@ -1,0 +1,27 @@
+#k8s/proxy-manager/npm-service.yaml
+apiVersion: v1
+kind: Service
+metadata:
+  name: npm-service
+  namespace: iot-system
+spec:
+  type: LoadBalancer # Or NodePort, depending on your K8s environment (cloud vs bare-metal)
+  selector:
+    app: npm
+  ports:
+    - name: http
+      protocol: TCP
+      port: 80
+      targetPort: 80
+    - name: https
+      protocol: TCP
+      port: 443
+      targetPort: 443
+    - name: admin-ui
+      protocol: TCP
+      port: 81
+      targetPort: 81
+    - name: mqtt-tcp
+      protocol: TCP
+      port: 1883
+      targetPort: 1883
