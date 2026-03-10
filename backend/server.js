@@ -2,10 +2,10 @@ const express = require('express');
 const cors = require('cors');
 const bodyParser = require('body-parser');
 const path = require('path'); // Add this!
-const config = require('./config/env.config');
+const config = require('./config/env.config.js');
 
-const apiRoutes = require('./routes/api.routes');
-const googleRoutes = require('./routes/google.routes');
+const apiRoutes = require('./routes/api.routes.js');
+const googleRoutes = require('./routes/google.routes.js');
 
 const app = express();
 

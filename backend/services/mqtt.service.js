@@ -1,5 +1,5 @@
 const mqtt = require('mqtt');
-const config = require('../config/env.config');
+const config = require('../config/env.config.js');
 
 class MqttService {
   constructor() {
