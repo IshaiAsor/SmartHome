@@ -2,27 +2,32 @@ name: Build and Push Unified Image
 
 on:
   push:
-    branches: [ "master" ]
+    branches: [ "main", "master" ] # Listens for both just to be safe!
 
 jobs:
   build-and-push:
     runs-on: ubuntu-latest
     steps:
+      # 1. Checkout the code FIRST
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      # 2. Set up the ARM emulator
       - name: Set up QEMU
         uses: docker/setup-qemu-action@v3
 
+      # 3. Set up the multi-architecture builder
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
 
-      - name: Checkout repository
-        uses: actions/checkout@v3
-
+      # 4. Authenticate with Docker Hub
       - name: Log in to Docker Hub
-        uses: docker/login-action@v2
+        uses: docker/login-action@v3
         with:
           username: ${{ secrets.DOCKER_USERNAME }}
           password: ${{ secrets.DOCKER_TOKEN }}
 
+      # 5. Build and Push (Watch the indentation carefully here!)
       - name: Build and push Unified Image
         uses: docker/build-push-action@v5
         with:
