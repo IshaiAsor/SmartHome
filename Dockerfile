@@ -1,7 +1,7 @@
 # ==========================================
 # STAGE 1: Build the Angular UI
 # ==========================================
-FROM --platform=$BUILDPLATFORM node:20-alpine AS ui-build
+FROM --platform=$BUILDPLATFORM node:lts-alpine AS ui-build
 WORKDIR /app/backoffice
 COPY backoffice/package*.json ./
 RUN npm install
@@ -12,7 +12,7 @@ RUN npm run build --configuration=production
 # ==========================================
 # STAGE 2: Build the Node.js Backend & Combine
 # ==========================================
-FROM --platform=$BUILDPLATFORM node:20-alpine
+FROM --platform=$BUILDPLATFORM node:lts-alpine
 WORKDIR /app/backend
 COPY backend/package*.json ./
 RUN npm install --production
