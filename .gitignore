@@ -2,6 +2,7 @@
 
 # Compiled output
 /dist
+**/dist
 /tmp
 /out-tsc
 /bazel-out
@@ -45,3 +46,10 @@ package-lock.json
 **/.pio/
 ESP32Code/src/cert.h
 ESP32Code/src/secrets.h
+
+# Environment variables (local only, keep .env.example)
+.env
+.env.local
+.env.*.local
+!.env.example
+!backend/.env.example

@@ -1,16 +1,17 @@
-const express = require('express');
+import express, { Request, Response } from 'express';
+import { smarthome } from 'actions-on-google';
+import deviceRepo from '../dal/device.repo';
+import mqttService from '../services/mqtt.service';
+
 const router = express.Router();
-const { smarthome } = require('actions-on-google');
-const deviceRepo = require('../dal/device.repo');
-const mqttService = require('../services/mqtt.service');
 
 // --- 1. Dummy OAuth Endpoints ---
-router.get('/auth', (req, res) => {
-  const { redirect_uri, state } = req.query;
-  res.redirect(`${redirect_uri}?code=my-secret-auth-code&state=${state}`); 
+router.get('/auth', (req: Request, res: Response) => {
+  const { redirect_uri, state } = req.query as any;
+  res.redirect(`${redirect_uri}?code=my-secret-auth-code&state=${state}`);
 });
 
-router.post('/token', (req, res) => {
+router.post('/token', (req: Request, res: Response) => {
   res.json({
     token_type: 'Bearer',
     access_token: 'dummy-access-token',
@@ -22,14 +23,14 @@ router.post('/token', (req, res) => {
 // --- 2. Smart Home Webhook ---
 const appSmarthome = smarthome();
 
-appSmarthome.onSync(async (body, headers) => {
+appSmarthome.onSync(async (body: any, headers: any) => {
   const dbDevices = await deviceRepo.getAll();
   
-  const syncDevices = dbDevices.map(d => ({
+  const syncDevices = dbDevices.map((d: any) => ({
     id: d.id,
     type: d.type,
     traits: ['action.devices.traits.OnOff'],
-    name: { name: d.name },
+    name: { name: d.name, defaultNames: [], nicknames: [] },
     willReportState: false
   }));
 
@@ -41,30 +42,26 @@ appSmarthome.onSync(async (body, headers) => {
 
 appSmarthome.onQuery(async (body, headers) => {
   const dbDevices = await deviceRepo.getAll();
-  let queryDevices = {};
+  const queryDevices: Record<string, any> = {};
   
-  dbDevices.forEach(d => {
+  dbDevices.forEach((d: any) => {
     queryDevices[d.id] = { on: d.is_on, online: true };
   });
 
   return { requestId: body.requestId, payload: { devices: queryDevices } };
 });
 
-appSmarthome.onExecute(async (body, headers) => {
+appSmarthome.onExecute(async (body: any, headers) => {
   const command = body.inputs[0].payload.commands[0];
   const execution = command.execution[0];
   const isTurnedOn = execution.params.on;
   
-  const successfulIds = [];
+  const successfulIds: string[] = [];
 
-  // Use a for...of loop to handle async/await cleanly
   for (const device of command.devices) {
     try {
-      // Update the database
       await deviceRepo.updateState(device.id, isTurnedOn);
       successfulIds.push(device.id);
-      
-      // Fire the hardware command
       mqttService.publishState(device.id, isTurnedOn);
     } catch (err) {
       console.error(`Failed to execute on ${device.id}`);
@@ -85,4 +82,4 @@ appSmarthome.onExecute(async (body, headers) => {
 
 router.post('/smarthome', appSmarthome);
 
-module.exports = router;
+export default router;
