@@ -34,10 +34,9 @@
         "type": "node",
         "request": "launch",
         "name": "Debug Backend (compiled)",
-        "preLaunchTask": "ssh-postgres-tunnel",
         "program": "${workspaceFolder}/backend/dist/index.js",
         "cwd": "${workspaceFolder}/backend",
-        "preLaunchTask": "build-backend",
+        "preLaunchTask": "pre-debug-compiled",
         "outFiles": ["${workspaceFolder}/backend/dist/**/*.js"],
         "skipFiles": ["<node_internals>/**"]
     }
