@@ -25,19 +25,18 @@ router.post('/token', (req: Request, res: Response) => {
 
 // --- 2. Smart Home Webhook ---
 const appSmarthome = smarthome();
-
 appSmarthome.onSync(async (body: any, headers: any) => {
   console.log('Received sync request:', body);
   const dbDevices = await deviceRepo.getAll();
   
   const syncDevices = dbDevices.map((d: any) => ({
-    id: d.id,
-    type: d.type,
+    id: d.device_mac_id,
+    type: 'action.devices.types.OUTLET',
     traits: ['action.devices.traits.OnOff'],
-    name: { name: d.name, defaultNames: [], nicknames: [] },
+    name: { name: d.device_name, defaultNames: [], nicknames: [] },
     willReportState: false
   }));
-
+console.log('Sync response devices:', syncDevices);
   return {
     requestId: body.requestId,
     payload: { agentUserId: 'admin', devices: syncDevices }
@@ -50,7 +49,7 @@ appSmarthome.onQuery(async (body, headers) => {
   const queryDevices: Record<string, any> = {};
   
   dbDevices.forEach((d: any) => {
-    queryDevices[d.id] = { on: d.is_on, online: true };
+    queryDevices[d.device_mac_id] = { on: d.is_on, online: true };
   });
 console.log('Query response devices:', queryDevices);
   return { requestId: body.requestId, payload: { devices: queryDevices } };
