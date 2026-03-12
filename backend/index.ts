@@ -9,8 +9,9 @@ import fs from 'fs'; // Import filesystem to check for the folder
 import config from './config/env.config';
 import { initializeDatabase } from './config/database-init';
 
-import apiRoutes from './routes/device.routes';
+import devicesRoute from './routes/device.routes';
 import googleRoutes from './routes/google.routes';
+import authRoutes from './routes/auth.routes';
 
 const app = express();
 
@@ -21,7 +22,8 @@ app.use(bodyParser.urlencoded({ extended: true }));
 
 // 1. Mount API Routes FIRST
 // This ensures they work even if the static files aren't found
-app.use('/api/devices', apiRoutes);
+app.use('/api/auth', authRoutes);
+app.use('/api/devices', devicesRoute);
 app.use('/', googleRoutes);
 
 // 2. Conditional Static File Serving

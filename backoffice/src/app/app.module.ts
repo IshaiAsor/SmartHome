@@ -1,10 +1,12 @@
 import { NgModule } from '@angular/core';
 import { BrowserModule } from '@angular/platform-browser';
-import { HttpClientModule } from '@angular/common/http';
+import { provideHttpClient, withInterceptors } from '@angular/common/http';
 
 import { AppRoutingModule } from './app-routing.module'; 
 import { AppComponent } from './app.component';
 import { DeviceListComponent } from './components/device-list/device-list.component';
+import { authInterceptor } from './interceptors/auth.interceptor';
+import { errorInterceptor } from './services/error.interceptor';
 
 @NgModule({
   declarations: [
@@ -13,11 +15,11 @@ import { DeviceListComponent } from './components/device-list/device-list.compon
   ],
   imports: [
     BrowserModule,
-    AppRoutingModule,   // ✅ Router stays here
-    HttpClientModule    // ✅ HTTP Client stays here
-    // ❌ DeviceListComponent is REMOVED from here
+    AppRoutingModule   // ✅ Router stays here
   ],
-  providers: [],
+  providers: [
+    provideHttpClient(withInterceptors([authInterceptor, errorInterceptor]))
+  ],
   bootstrap: [AppComponent]
 })
 export class AppModule { }

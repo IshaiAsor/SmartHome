@@ -1,9 +1,11 @@
 import express, { Request, Response } from 'express';
 import deviceRepo from '../dal/device.repo';
 // import mqttClient from '../mqtt-service'; // You would import your MQTT publisher here
+import { verifyToken } from './auth.middleware';
 
 const router = express.Router();
-
+// Protect all routes in this file with JWT verification
+router.use(verifyToken);
 // GET /api/devices
 router.get('/', async (req: Request, res: Response) => {
   try {
@@ -16,7 +18,7 @@ router.get('/', async (req: Request, res: Response) => {
     }));
     res.json(clientDevices);
   } catch (error) {
-    res.status(500).json({ error: 'Database error' });
+    res.status(500).json({ error });
   }
 });
 

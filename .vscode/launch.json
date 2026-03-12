@@ -39,6 +39,20 @@
         "preLaunchTask": "pre-debug-compiled",
         "outFiles": ["${workspaceFolder}/backend/dist/**/*.js"],
         "skipFiles": ["<node_internals>/**"]
+    },
+    {
+        "name": "Debug Backoffice (Chrome)",
+        "type": "pwa-chrome",
+        "request": "launch",
+        "url": "http://localhost:4200",
+        "webRoot": "${workspaceFolder}/backoffice",
+        "preLaunchTask": "serve-backoffice"
+    }
+    ],
+    "compounds": [
+    {
+        "name": "Full Stack Debug (ts-node)",
+        "configurations": ["Debug Backend (ts-node)", "Debug Backoffice (Chrome)"]
     }
     ]
 }

@@ -15,6 +15,7 @@ export interface EnvConfig {
   port: number;
   mqtt: MqttConfig;
   googleAuth: GoogleAuthConfig;
+  jwtSecret: string;
 }
 
 const config: EnvConfig = {
@@ -30,6 +31,7 @@ const config: EnvConfig = {
     googleAccessToken: process.env.GOOGLE_AUTH_ACCESS_TOKEN || '',
     googleRefreshToken: process.env.GOOGLE_AUTH_REFRESH_TOKEN || '',
   },
+  jwtSecret: process.env.JWT_SECRET || 'default-secret',
 };
 
 export default config;

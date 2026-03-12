@@ -49,6 +49,27 @@
         "ssh-postgres-tunnel"
       ],
       "dependsOrder": "sequence"
+    },
+    {
+      "label": "serve-backoffice",
+      "type": "shell",
+      "command": "npm start",
+      "options": {
+        "cwd": "${workspaceFolder}/backoffice"
+      },
+      "isBackground": true,
+      "problemMatcher": {
+        "pattern": "$tsc",
+        "background": {
+          "activeOnStart": true,
+          "beginsPattern": {
+            "regexp": "Generating browser application bundles|Compiling..."
+          },
+          "endsPattern": {
+            "regexp": "Application bundle generation complete|Compiled successfully"
+          }
+        }
+      }
     }
   ]
 }

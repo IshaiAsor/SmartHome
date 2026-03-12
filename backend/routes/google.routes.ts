@@ -1,25 +1,53 @@
-import express, { Request, Response } from 'express';
+import express, { Request, Response, NextFunction } from 'express';
+import * as jwt from 'jsonwebtoken';
 import { smarthome } from 'actions-on-google';
 import deviceRepo from '../dal/device.repo';
 import mqttService from '../services/mqtt.service';
 import config from '../config/env.config';
+import { verifyToken } from './auth.middleware';
+import { renderAuthPage } from '../views/auth.view';
 
 const router = express.Router();
 
-// --- 1. Dummy OAuth Endpoints ---
 router.get('/auth', (req: Request, res: Response) => {
   console.log('Received auth request:', req.query);
-  const { redirect_uri, state } = req.query as any;
-  res.redirect(`${redirect_uri}?code=${config.googleAuth.googleAuthCode}&state=${state}`);
+  const { redirect_uri, state, client_id, response_type } = req.query as any;
+
+  if (!client_id || !redirect_uri || !state || response_type !== 'code') {
+    return res.status(400).send('Missing required parameters or invalid response_type');
+  }
+
+  // Render the login page, passing the parameters as hidden fields so we don't lose them
+  const html = renderAuthPage('/auth/login', { redirect_uri, state, client_id, response_type });
+  res.send(html);
+});
+
+router.post('/auth/login', (req: Request, res: Response) => {
+  const { username, password, redirect_uri, state, client_id, response_type } = req.body;
+  
+  // Check credentials (using the same hardcoded admin/admin for now)
+  if (username === 'admin' && password === 'admin') {
+    // Success! Redirect the user back to Google with the auth code
+    const redirectUrl = `${redirect_uri}?code=${config.googleAuth.googleAuthCode}&state=${state}`;
+    res.redirect(redirectUrl);
+  } else {
+    // Failure! Re-render the form with an error message
+    const html = renderAuthPage('/auth/login', { redirect_uri, state, client_id, response_type }, 'Invalid username or password');
+    res.send(html);
+  }
 });
 
 router.post('/token', (req: Request, res: Response) => {
   console.log('Received token request:', req.body);
+  const token = jwt.sign({ user: 'google' }, config.jwtSecret, { expiresIn: '1h' });
+  const refreshToken = jwt.sign({ user: 'google' }, config.jwtSecret, { expiresIn: '7d' });
+  console.log('Token response:', { token, refreshToken });
+  
   res.json({
     token_type: 'Bearer',
-    access_token: config.googleAuth.googleAccessToken,
-    refresh_token: config.googleAuth.googleRefreshToken,
-    expires_in: 31536000
+    access_token: token,
+    refresh_token: refreshToken,
+    expires_in: 3600
   });
 });
 
@@ -87,6 +115,6 @@ appSmarthome.onExecute(async (body: any, headers) => {
   };
 });
 
-router.post('/smarthome', appSmarthome);
+router.post('/smarthome', verifyToken, appSmarthome);
 
 export default router;

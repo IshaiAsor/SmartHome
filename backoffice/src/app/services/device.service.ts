@@ -17,15 +17,15 @@ export interface Device {
 })
 export class DeviceService {
   // 2. Use the environment variable to build the base URL
-  private apiUrl = `${environment.apiUrl}/api/devices`;
+  private apiUrl = `${environment.apiUrl}`;
 
   constructor(private http: HttpClient) {}
 
   getDevices(): Observable<Device[]> {
-    return this.http.get<Device[]>(this.apiUrl);
+    return this.http.get<Device[]>(`${this.apiUrl}/api/devices`);
   }
 
   toggleDevice(id: string, isOn: boolean): Observable<Device> {
-    return this.http.patch<Device>(`${this.apiUrl}/${id}/state`, { isOn });
+    return this.http.patch<Device>(`${this.apiUrl}/api/devices/${id}/state`, { isOn });
   }
 }
