@@ -27,10 +27,9 @@ const rootDir = process.cwd();
 //app.use(express.static(path.join(__dirname, 'public')));
 app.use(express.static(path.join(rootDir, 'dist', 'public')));
 // 3. Catch-all for Angular Routing (Must be the very last route!)
-app.get(/(.*)/, (req: Request, res: Response) => {
-  res.sendFile(path.join(__dirname, 'public', 'index.html'));
+app.get('*', (req, res) => {
+  res.sendFile(path.join(rootDir, 'dist', 'public', 'index.html'));
 });
-
 // Initialize database and start server
 async function startServer() {
   await initializeDatabase();
