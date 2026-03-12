@@ -1,4 +1,4 @@
-import db from './db';
+import db from '../config/db';
 
 export async function initializeDatabase() {
   try {

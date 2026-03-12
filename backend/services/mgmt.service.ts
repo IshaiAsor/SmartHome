@@ -1,6 +1,6 @@
 import deviceRepo from '../dal/device.repo';
 import mqttService from './mqtt.service';
-import { deviceStatusEnum } from '../dal/deviceStatusEnum';
+import { deviceStatusEnum } from '../common/deviceStatusEnum';
 
 class MgmtService {
   async getAllDevices() {

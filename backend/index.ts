@@ -7,7 +7,7 @@ import bodyParser from 'body-parser';
 import path from 'path';
 import fs from 'fs'; // Import filesystem to check for the folder
 import config from './config/env.config';
-import { initializeDatabase } from './config/database-init';
+import { initializeDatabase } from './dal/database-init';
 
 import devicesRoute from './routes/device.routes';
 import googleRoutes from './routes/google.routes';

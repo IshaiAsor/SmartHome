@@ -11,10 +11,19 @@ export interface GoogleAuthConfig {
   googleRefreshToken?: string;
 }
 
+export interface DbConfig {
+  host?: string;
+  user?: string;
+  password?: string;
+  database?: string;
+  port?: number;
+}
+
 export interface EnvConfig {
   port: number;
   mqtt: MqttConfig;
   googleAuth: GoogleAuthConfig;
+  db: DbConfig;
   jwtSecret: string;
 }
 
@@ -30,6 +39,13 @@ const config: EnvConfig = {
     googleAuthCode: process.env.GOOGLE_AUTH_CODE || '',
     googleAccessToken: process.env.GOOGLE_AUTH_ACCESS_TOKEN || '',
     googleRefreshToken: process.env.GOOGLE_AUTH_REFRESH_TOKEN || '',
+  },
+  db: {
+    host: process.env.DB_HOST,
+    user: process.env.DB_USER,
+    password: process.env.DB_PASSWORD,
+    database: process.env.DB_NAME,
+    port: +(process.env.DB_PORT || 5432),
   },
   jwtSecret: process.env.JWT_SECRET || 'default-secret',
 };
