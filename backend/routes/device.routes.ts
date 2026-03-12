@@ -8,7 +8,13 @@ const router = express.Router();
 router.get('/', async (req: Request, res: Response) => {
   try {
     const devices = await deviceRepo.getAll();
-    res.json(devices);
+    const clientDevices = devices.map((d: any) => ({
+      id: d.device_mac_id,
+      name: d.device_name,
+      type: 'outlet',
+      is_on: d.is_on,
+    }));
+    res.json(clientDevices);
   } catch (error) {
     res.status(500).json({ error: 'Database error' });
   }
