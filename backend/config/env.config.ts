@@ -6,9 +6,9 @@ export interface MqttConfig {
 }
 
 export interface GoogleAuthConfig {
-  code: string;
-  accessToken: string;
-  refreshToken: string;
+  googleAuthCode?: string;
+  googleAccessToken?: string;
+  googleRefreshToken?: string;
 }
 
 export interface EnvConfig {
@@ -26,9 +26,9 @@ const config: EnvConfig = {
     password: process.env.MQTT_PASSWORD ,
   },
   googleAuth: {
-    code: process.env.GOOGLE_AUTH_CODE || 'my-secret-auth-code',
-    accessToken: process.env.GOOGLE_AUTH_ACCESS_TOKEN || 'dummy-access-token',
-    refreshToken: process.env.GOOGLE_AUTH_REFRESH_TOKEN || 'dummy-refresh-token',
+    googleAuthCode: process.env.GOOGLE_AUTH_CODE || '',
+    googleAccessToken: process.env.GOOGLE_AUTH_ACCESS_TOKEN || '',
+    googleRefreshToken: process.env.GOOGLE_AUTH_REFRESH_TOKEN || '',
   },
 };
 

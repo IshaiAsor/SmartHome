@@ -2,20 +2,22 @@ import express, { Request, Response } from 'express';
 import { smarthome } from 'actions-on-google';
 import deviceRepo from '../dal/device.repo';
 import mqttService from '../services/mqtt.service';
+import config from '../config/env.config';
 
 const router = express.Router();
 
 // --- 1. Dummy OAuth Endpoints ---
 router.get('/auth', (req: Request, res: Response) => {
   const { redirect_uri, state } = req.query as any;
-  res.redirect(`${redirect_uri}?code=my-secret-auth-code&state=${state}`);
+  res.redirect(`${redirect_uri}?code=${config.googleAuth.googleAuthCode}&state=${state}`);
 });
 
 router.post('/token', (req: Request, res: Response) => {
+  console.log('Received token request:', req.body);
   res.json({
     token_type: 'Bearer',
-    access_token: 'dummy-access-token',
-    refresh_token: 'dummy-refresh-token',
+    access_token: config.googleAuth.googleAccessToken,
+    refresh_token: config.googleAuth.googleRefreshToken,
     expires_in: 31536000
   });
 });
@@ -24,6 +26,7 @@ router.post('/token', (req: Request, res: Response) => {
 const appSmarthome = smarthome();
 
 appSmarthome.onSync(async (body: any, headers: any) => {
+  console.log('Received sync request:', body);
   const dbDevices = await deviceRepo.getAll();
   
   const syncDevices = dbDevices.map((d: any) => ({
@@ -41,17 +44,20 @@ appSmarthome.onSync(async (body: any, headers: any) => {
 });
 
 appSmarthome.onQuery(async (body, headers) => {
+  console.log('Received query request:', body);
   const dbDevices = await deviceRepo.getAll();
   const queryDevices: Record<string, any> = {};
   
   dbDevices.forEach((d: any) => {
     queryDevices[d.id] = { on: d.is_on, online: true };
   });
-
+console.log('Query response devices:', queryDevices);
   return { requestId: body.requestId, payload: { devices: queryDevices } };
 });
 
 appSmarthome.onExecute(async (body: any, headers) => {
+  console.log('Received execute request:', body);
+
   const command = body.inputs[0].payload.commands[0];
   const execution = command.execution[0];
   const isTurnedOn = execution.params.on;
@@ -60,6 +66,7 @@ appSmarthome.onExecute(async (body: any, headers) => {
 
   for (const device of command.devices) {
     try {
+      console.log(`Executing on ${device.id}`);
       await deviceRepo.updateState(device.id, isTurnedOn);
       successfulIds.push(device.id);
       mqttService.publishState(device.id, isTurnedOn);
