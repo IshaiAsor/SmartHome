@@ -8,6 +8,7 @@ const router = express.Router();
 
 // --- 1. Dummy OAuth Endpoints ---
 router.get('/auth', (req: Request, res: Response) => {
+  console.log('Received auth request:', req.query);
   const { redirect_uri, state } = req.query as any;
   res.redirect(`${redirect_uri}?code=${config.googleAuth.googleAuthCode}&state=${state}`);
 });
