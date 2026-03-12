@@ -9,7 +9,7 @@ import fs from 'fs'; // Import filesystem to check for the folder
 import config from './config/env.config';
 import { initializeDatabase } from './config/database-init';
 
-import apiRoutes from './routes/api.routes';
+import apiRoutes from './routes/device.routes';
 import googleRoutes from './routes/google.routes';
 
 const app = express();
