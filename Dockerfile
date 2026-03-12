@@ -24,7 +24,7 @@ RUN npm install --production
 
 # FIX: Copy Angular files into the DIST folder where the compiled JS lives
 # This ensures path.join(__dirname, 'public') actually works.
-COPY --from=ui-build /app/backoffice/dist/backoffice/browser ./dist/public
+COPY --from=ui-build /app/backoffice/dist/backoffice ./dist/public
 
 # If your Angular version is older and doesn't have the /browser suffix, use:
 # COPY --from=ui-build /app/backoffice/dist/backoffice ./dist/public
