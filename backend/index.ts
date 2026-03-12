@@ -36,7 +36,8 @@ if (fs.existsSync(publicPath)) {
 
     // Catch-all for Angular Routing (Only if public exists)
     // Using '/*' instead of '(.*)' is the standard fix for Express 5 path errors
-    app.get('/*', (req: express.Request, res: express.Response) => {
+    
+    app.get('/:any', (req: express.Request, res: express.Response) => {
         res.sendFile(path.join(publicPath, 'index.html'));
     });
 } else {
