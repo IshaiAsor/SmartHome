@@ -22,9 +22,10 @@ app.use(bodyParser.urlencoded({ extended: true }));
 app.use('/api/devices', apiRoutes);  // Angular UI goes here
 app.use('/', googleRoutes);          // Google goes to /auth, /token, and /smarthome
 
+const rootDir = process.cwd();
 // 2. Serve the compiled Angular frontend
-app.use(express.static(path.join(__dirname, 'public')));
-
+//app.use(express.static(path.join(__dirname, 'public')));
+app.use(express.static(path.join(rootDir, 'dist', 'public')));
 // 3. Catch-all for Angular Routing (Must be the very last route!)
 app.get(/(.*)/, (req: Request, res: Response) => {
   res.sendFile(path.join(__dirname, 'public', 'index.html'));
