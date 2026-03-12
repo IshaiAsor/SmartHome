@@ -17,6 +17,7 @@
         "type": "node",
         "request": "launch",
         "name": "Debug Backend (ts-node)",
+        "preLaunchTask": "ssh-postgres-tunnel",
         "runtimeArgs": [
             "-r",
             "ts-node/register"
@@ -33,6 +34,7 @@
         "type": "node",
         "request": "launch",
         "name": "Debug Backend (compiled)",
+        "preLaunchTask": "ssh-postgres-tunnel",
         "program": "${workspaceFolder}/backend/dist/index.js",
         "cwd": "${workspaceFolder}/backend",
         "preLaunchTask": "build-backend",

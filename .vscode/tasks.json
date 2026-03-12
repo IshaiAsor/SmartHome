@@ -10,6 +10,27 @@
         "reveal": "always"
       },
       "problemMatcher": ["$tsc"]
+    },
+    {
+      "label": "ssh-postgres-tunnel",
+      "type": "shell",
+      "command": "ssh -L 5432:localhost:5432 ubuntu@k3sa1-ishai.duckdns.org \"sudo kubectl port-forward svc/postgres 5432:5432 -n my-apps\"",
+      "isBackground": true,
+      "problemMatcher": {
+        "pattern": [
+          {
+            "regexp": ".",
+            "file": 1,
+            "location": 2,
+            "message": 3
+          }
+        ],
+        "background": {
+          "activeOnStart": true,
+          "beginsPattern": ".",
+          "endsPattern": "^Forwarding from"
+        }
+      }
     }
   ]
 }
