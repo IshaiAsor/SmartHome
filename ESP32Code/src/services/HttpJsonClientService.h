@@ -23,6 +23,9 @@ public:
 
     TOut PostJson(const String url, const String token, const TIn *payload, bool validateCACert)
     {
+        Serial.println(url);
+        Serial.println(token);
+        
         if (validateCACert)
         {
             secureClient.setCACert(root_ca);
@@ -126,7 +129,7 @@ public:
         }
         else
         {
-            Serial.print("HTTP POST failed, code: ");
+            Serial.print("HTTP GET failed, code: ");
             Serial.println(httpResponseCode);
             httpClient.end(); // Always close the connection
             return TOut();    // Fixed: return default constructor
