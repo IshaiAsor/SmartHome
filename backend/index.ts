@@ -43,7 +43,7 @@ if (fs.existsSync(publicPath)) {
   console.log(`✅ Serving static files from: ${publicPath}`);
   app.use(express.static(publicPath));
 
-  app.get('/:any', (req: express.Request, res: express.Response) => {
+  app.get('*', (req: express.Request, res: express.Response) => {
     res.sendFile(path.join(publicPath, 'index.html'));
   });
 } else {
