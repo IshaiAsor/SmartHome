@@ -23,16 +23,21 @@ const app = express();
 const server = http.createServer(app);
 socketService.init(server);
 
+// Debug logging middleware - MOVED TO TOP
+app.use((req, res, next) => {
+  console.log(`[${new Date().toISOString()}] DEBUG: ${req.method} ${req.url}`);
+  next();
+});
+
 app.use(cors());
 app.use(bodyParser.json());
 app.use(bodyParser.urlencoded({ extended: true }));
 app.use(bodyParser.text({ type: 'text/plain' }));
 
-// Debug logging middleware
+// Post-parser debug logging
 app.use((req, res, next) => {
-  console.log(`[${new Date().toISOString()}] ${req.method} ${req.url}`);
   if (req.method === 'POST') {
-    console.log('Body:', JSON.stringify(req.body));
+    console.log(`[${new Date().toISOString()}] DEBUG: Parsed Body:`, JSON.stringify(req.body));
   }
   next();
 });
