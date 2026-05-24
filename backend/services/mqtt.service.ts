@@ -13,23 +13,31 @@ class MqttService {
   client: MqttClient;
 
   constructor() {
-
-    let caPath = path.resolve(__dirname, config.mqtt.caCertPath);
-    console.log(`CA cert path: ${caPath}`);
-    const CA_CERT = fs.readFileSync(caPath);
-    console.log(`CA cert: ${CA_CERT}`);
-
     const options: mqtt.IClientOptions = {
       host: config.mqtt.serverName,
       port: config.mqtt.port,
       protocol: 'mqtts',
-      ca: CA_CERT,
       username: config.mqtt.username,
       password: config.mqtt.password,
       rejectUnauthorized: config.mqtt.validateCert,
       keepalive: 60,
       reconnectPeriod: 1000,
     };
+
+    if (config.mqtt.caCertPath) {
+      try {
+        const caPath = path.resolve(__dirname, config.mqtt.caCertPath);
+        if (fs.existsSync(caPath) && fs.lstatSync(caPath).isFile()) {
+          console.log(`🔐 Loading custom CA cert from: ${caPath}`);
+          options.ca = fs.readFileSync(caPath);
+        }
+      } catch (err) {
+        console.error('⚠️ Failed to load custom CA cert, falling back to system roots:', err);
+      }
+    } else {
+      console.log('🌐 No custom CA path provided, using system root certificates.');
+    }
+
     this.client = mqtt.connect(options);
 
     this.client.on('connect', () => {
