@@ -20,10 +20,14 @@ router.post('/register-device', verifyToken(JwtPurpose.device_provisioning),asyn
   console.log('Received device registration request with body type:', typeof req.body);
 
   let provisioningToken = '';
-  if (typeof req.body === 'string' && req.body.startsWith('ey')) {
-    provisioningToken = req.body;
+  if (typeof req.body === 'string' && (req.body.startsWith('ey') || req.body.startsWith('"ey'))) {
+    provisioningToken = req.body.trim();
+    if (provisioningToken.startsWith('"') && provisioningToken.endsWith('"')) {
+        provisioningToken = provisioningToken.substring(1, provisioningToken.length - 1);
+    }
   } else {
     provisioningToken = req.body.provisioningToken;
+    if (provisioningToken) provisioningToken = provisioningToken.trim();
   }
 
   const deviceType = req.body.deviceType || req.query.deviceType;

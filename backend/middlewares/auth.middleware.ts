@@ -21,10 +21,14 @@ export const verifyToken = (purpose: JwtPurpose) => {
     
     // 2. Try Request Body (Intelligent detection)
     if (!token && req.body) {
-      if (typeof req.body === 'string' && req.body.startsWith('ey')) {
-        token = req.body; // Entire body is the JWT
+      if (typeof req.body === 'string' && (req.body.startsWith('ey') || req.body.startsWith('"ey'))) {
+        token = req.body.trim(); 
+        // Remove wrapping quotes if they exist (some clients send "token")
+        if (token.startsWith('"') && token.endsWith('"')) {
+            token = token.substring(1, token.length - 1);
+        }
       } else if (req.body.provisioningToken) {
-        token = req.body.provisioningToken; // JSON property
+        token = req.body.provisioningToken.trim();
       }
     }
     
