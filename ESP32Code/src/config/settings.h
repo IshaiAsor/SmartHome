@@ -12,5 +12,5 @@ const int BUTTON_PIN = 0;
 const int READING_INTERVAL = 10000; // 10 seconds
 const long JWT_REFRESH_POLICY = 60 * 7.5;
 const bool FORCE_WPA3 = false;
-const bool PROVISION_ON_ERROR=false;
+const bool PROVISION_ON_ERROR=true;
 const long WIFI_TIMEOUT = 1000*60*60; //60 min

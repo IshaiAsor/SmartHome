@@ -7,7 +7,8 @@
 static OnboardLedAction onboardLed("onboardLed", 48);
 static OutletCommandAction outlet1("outlet1",4);
 static BaseCommandAction* const DEVICE_ACTIONS_SETUP[] = {
-   &onboardLed
+   &onboardLed,
+   &outlet1
 };
 
 static TemperatureAction tempSensor1(7 , "sensor1", READING_INTERVAL);
