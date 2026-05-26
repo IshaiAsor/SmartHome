@@ -44,8 +44,6 @@ Thumbs.db
 **/.angular/
 package-lock.json
 **/.pio/
-ESP32Code/src/cert.h
-ESP32Code/src/secrets.h
 
 # Environment variables (local only, keep .env.example)
 .env

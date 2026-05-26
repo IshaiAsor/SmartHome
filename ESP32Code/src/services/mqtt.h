@@ -8,6 +8,7 @@
 #include "JwtService.h"
 #include "config/settings.h"
 #include "MqttActionsHandlerService.h"
+#include "certs/cert.h"
 #include "OtaService.h"
 class MqttService
 {
