@@ -4,6 +4,7 @@ const char DEVICE_VERSION[] = "V1.0.0";
 const char COMMAND_TOPIC[] = "users/%{userid}/devices/%{deviceid}/command/#";
 const char STATUS_TOPIC[] = "users/%{userid}/devices/%{deviceid}/status";
 const char TELEMETRY_TOPIC[] = "users/%{userid}/devices/%{deviceid}/telemetry/#";
+const char OTA_TOPIC[] = "ota/updates/%{devicetype}";
 const char AP_HOTSPOT_NAME[] = "SmartOutlet_Setup";
 const char AP_HOTSPOT_PASSWORD[] = ""; // Open network for easier provisioning
 const char SERVICE_UUID[] = "12345678-1234-5678-1234-56789abcdef0";

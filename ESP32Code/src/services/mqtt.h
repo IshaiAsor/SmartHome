@@ -8,6 +8,7 @@
 #include "JwtService.h"
 #include "config/settings.h"
 #include "MqttActionsHandlerService.h"
+#include "OtaService.h"
 class MqttService
 {
 private:
@@ -19,6 +20,7 @@ private:
     JwtToken *jwtData = nullptr;
     MqttCredentials *mqttCreds = nullptr;
     MqttActionsHandlerService *mqttActionsHandler;
+    OtaService *otaService = nullptr;
 
 public:
     MqttService(WiFiClientSecure &espClient) : espClient(espClient)
@@ -29,6 +31,7 @@ public:
         client->setBufferSize(2048);
         client->setKeepAlive(10);
         client->setCallback(MqttActionsHandlerService::callback);
+        otaService = new OtaService(DEVICE_VERSION, DEVICE_TYPE, root_ca);
     }
     ~MqttService() {};
 
@@ -71,8 +74,12 @@ public:
         {
             espClient.setInsecure();
         }
+        else
+        {
+            espClient.setCACert(root_ca);
+        }
 
-        client->setServer(mqttCreds->server.c_str(), mqttCreds->port);
+        // client->setServer(mqttCreds->server.c_str(), mqttCreds->port);
 
         String commandTopicStr = String(COMMAND_TOPIC);
         commandTopicStr.replace("%{userid}", mqttCreds->userId.c_str());
@@ -86,6 +93,9 @@ public:
         telemetryTopicStr.replace("%{userid}", mqttCreds->userId.c_str());
         telemetryTopicStr.replace("%{deviceid}", mqttCreds->clientId.c_str());
 
+        String otaTopicStr = String(OTA_TOPIC);
+        otaTopicStr.replace("%{devicetype}", DEVICE_TYPE);
+        
         int attempt = 0;
         const int max_attempts = 5;
 
@@ -96,8 +106,9 @@ public:
                 client->publish(statusTopicStr.c_str(), "online", true);
                 client->subscribe(commandTopicStr.c_str());
                 client->subscribe(telemetryTopicStr.c_str());
+                client->subscribe(otaTopicStr.c_str());
 
-                Serial.println("connected");
+                Serial.println("connected and subscribed to topics");
             }
             else
             {

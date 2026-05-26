@@ -1,0 +1,118 @@
+const express = require('express');
+const mqtt = require('mqtt');
+const path = require('path');
+const fs = require('fs');
+const multer = require('multer');
+
+const tls = require('tls');
+
+const app = express();
+const port = process.env.PORT || 3000;
+const firmwarePath = process.env.FIRMWARE_PATH || './firmware';
+
+// --- MQTT Client Setup (Matching Web-App) ---
+const mqttOptions = {
+    host: process.env.MQTT_INTERNAL_HOST || 'emqx',
+    port: parseInt(process.env.MQTT_PORT || '8883'),
+    protocol: process.env.MQTT_CA_CERT_PATH ? 'mqtts' : 'mqtt',
+    username: process.env.MQTT_APP_USERNAME,
+    password: process.env.MQTT_APP_PASSWORD,
+    rejectUnauthorized: process.env.MQTT_VALIDATE_CERT === 'true',
+    servername: process.env.MQTT_SERVER_NAME,
+    checkServerIdentity: (host, cert) => {
+        if (process.env.MQTT_SERVER_NAME) {
+            return tls.checkServerIdentity(process.env.MQTT_SERVER_NAME, cert);
+        }
+        return tls.checkServerIdentity(host, cert);
+    },
+    keepalive: 60,
+    reconnectPeriod: 1000,
+    clientId: `ota_manager_${Math.random().toString(16).slice(2, 8)}`
+};
+
+if (process.env.MQTT_CA_CERT_PATH && fs.existsSync(process.env.MQTT_CA_CERT_PATH)) {
+    console.log(`🔐 Loading custom CA cert from: ${process.env.MQTT_CA_CERT_PATH}`);
+    mqttOptions.ca = fs.readFileSync(process.env.MQTT_CA_CERT_PATH);
+}
+
+// Ensure firmware directory exists
+if (!fs.existsSync(firmwarePath)) {
+    fs.mkdirSync(firmwarePath, { recursive: true });
+}
+
+// Multer setup for firmware uploads
+const storage = multer.diskStorage({
+    destination: (req, file, cb) => {
+        const deviceType = req.body.deviceType || 'generic';
+        const dir = path.join(firmwarePath, deviceType);
+        if (!fs.existsSync(dir)) {
+            fs.mkdirSync(dir, { recursive: true });
+        }
+        cb(null, dir);
+    },
+    filename: (req, file, cb) => {
+        const version = req.body.version || 'latest';
+        cb(null, `${version}.bin`);
+    }
+});
+const upload = multer({ storage: storage });
+
+const mqttClient = mqtt.connect(mqttOptions);
+
+mqttClient.on('connect', () => {
+    console.log('✅ Connected to MQTT Broker');
+});
+
+// --- API Routes ---
+
+// 1. Serve firmware binaries
+app.use('/download', express.static(firmwarePath));
+
+// 2. Metadata check
+app.get('/check', (req, res) => {
+    const { deviceType, currentVersion } = req.query;
+    if (!deviceType) return res.status(400).send('Missing deviceType');
+
+    const metaFile = path.join(firmwarePath, deviceType, 'latest.json');
+    if (fs.existsSync(metaFile)) {
+        const meta = JSON.parse(fs.readFileSync(metaFile, 'utf8'));
+        return res.json(meta);
+    }
+    res.status(404).send('No firmware found for this device type');
+});
+
+// 3. Trigger OTA (Admin/Automation)
+app.post('/release', upload.single('firmware'), (req, res) => {
+    const { deviceType, version, releaseNotes } = req.body;
+    
+    if (!req.file || !deviceType || !version) {
+        return res.status(400).send('Missing file, deviceType, or version');
+    }
+
+    const downloadUrl = `https://${req.get('host')}/download/${deviceType}/${version}.bin`;
+    
+    const releaseData = {
+        version,
+        deviceType,
+        url: downloadUrl,
+        releaseNotes,
+        timestamp: new Date().toISOString()
+    };
+
+    // Save as latest
+    fs.writeFileSync(
+        path.join(firmwarePath, deviceType, 'latest.json'),
+        JSON.stringify(releaseData, null, 2)
+    );
+
+    // Broadcast to devices
+    const topic = `ota/updates/${deviceType}`;
+    mqttClient.publish(topic, JSON.stringify(releaseData), { qos: 1, retain: true });
+
+    console.log(`🚀 Released version ${version} for ${deviceType}`);
+    res.json({ message: 'Release published', data: releaseData });
+});
+
+app.listen(port, () => {
+    console.log(`📡 OTA Manager listening at http://localhost:${port}`);
+});

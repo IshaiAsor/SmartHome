@@ -69,9 +69,14 @@ services:
       - '5432:5432'
     volumes:
       - pg-data:/var/lib/postgresql/data
-      - ./sql:/docker-entrypoint-initdb.d:ro
+      - ./local-sql:/docker-entrypoint-initdb.d:ro
       - /etc/localtime:/etc/localtime:ro
       - /etc/timezone:/etc/timezone:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d ${DB_NAME:-emqx_data}"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
     restart: always
 
   # Adminer (Database Management Tool)
@@ -87,7 +92,32 @@ services:
           memory: 64M # Equivalent to memory: 64Mi
     restart: always
     depends_on:
-      - postgres
+      postgres:
+        condition: service_healthy
+
+  # Atlas Migration Tool (Local)
+  atlas:
+    image: arigaio/atlas:latest
+    container_name: atlas_migrate
+    volumes:
+      - ./migrations:/migrations
+    command: >
+      migrate apply
+      --url "postgres://postgres:${DB_PASSWORD}@postgres:5432/${DB_NAME:-emqx_data}?sslmode=disable"
+      --dir "file://migrations"
+      --allow-dirty
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+  # Utility to update atlas.sum (Run with: docker-compose run atlas-hash)
+  atlas-hash:
+    image: arigaio/atlas:latest
+    container_name: atlas_hash
+    volumes:
+      - ./migrations:/migrations
+    command: migrate hash --dir "file://migrations"
+
   cache:
     image: redis:7-alpine
     container_name: redis_cache
@@ -102,6 +132,28 @@ services:
     volumes:
       - redis_data:/data
     restart: always
+
+  # OTA Manager Service
+  ota-manager:
+    build:
+      context: ./ota-manager
+    container_name: ota-manager
+    ports:
+      - '3001:3000'
+    environment:
+      - PORT=3000
+      - MQTT_INTERNAL_HOST=emqx
+      - MQTT_PORT=1883
+      - MQTT_VALIDATE_CERT=false
+      - MQTT_APP_USERNAME=${MQTT_APP_USERNAME}
+      - MQTT_APP_PASSWORD=${MQTT_APP_PASSWORD}
+      - FIRMWARE_PATH=/app/firmware
+    volumes:
+      - ./firmware-storage:/app/firmware
+    depends_on:
+      - emqx
+    restart: always
+
 volumes:
   emqx-data:
   pg-data:

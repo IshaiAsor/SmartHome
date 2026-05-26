@@ -10,6 +10,7 @@
 #include "PreferencesManagerService.h"
 #include "JwtService.h"
 #include "actions/DeviceActions.h"
+#include "OtaService.h"
 
 class MqttActionsHandlerService
 {
@@ -19,6 +20,7 @@ public:
 
     static void callback(char *topic, byte *payload, unsigned int length)
     {
+        static OtaService *otaService = new OtaService(DEVICE_VERSION, DEVICE_TYPE, root_ca);
         Serial.print("Message arrived on topic: ");
         Serial.println(topic);
         // "users/%{userid}/devices/%{deviceid}/telemetry/#"
@@ -46,19 +48,20 @@ public:
         Serial.println(actionType);
         Serial.print("Action: ");
         Serial.println(action);
-
         String message;
         message.reserve(length);
         for (unsigned int i = 0; i < length; i++)
         {
             message += (char)payload[i];
         }
-        Serial.print("Payload: ");
-        Serial.println(message);
 
-        Serial.println("-----------------------");
+        // Handle OTA topic
+        if (strcmp(parts[0], "ota") == 0)
+        {
+            otaService->handleUpdateMessage(message.c_str());
+            return;
+        }
 
-        // Handle outlet control
         if (strcmp(actionType, "status") == 0)
         {
             Serial.print("Device : ");

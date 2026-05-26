@@ -39,8 +39,8 @@ jobs:
           WITH_V: true
           DEFAULT_BUMP: patch
 
-      # 6. Build and Push (To GHCR with Caching)
-      - name: Build and push Unified Image
+      # 6. Build and Push Server Image
+      - name: Build and push Server Image
         uses: docker/build-push-action@v5
         with:
           context: .
@@ -49,5 +49,34 @@ jobs:
           tags: |
             ghcr.io/ishaiasor/smarthome-server:${{ steps.tag_version.outputs.new_tag }}
             ghcr.io/ishaiasor/smarthome-server:latest
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+      # 7. Generate Atlas Hash and Build Migrations Image
+      - name: Generate Atlas Hash
+        run: |
+          docker run --rm -v ${{ github.workspace }}/migrations:/migrations arigaio/atlas:latest migrate hash --dir "file:///migrations"
+
+      - name: Build and push Migrations Image
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          file: Dockerfile.migrations
+          platforms: linux/amd64,linux/arm64
+          push: true
+          tags: |
+            ghcr.io/ishaiasor/smarthome-migrations:${{ steps.tag_version.outputs.new_tag }}
+            ghcr.io/ishaiasor/smarthome-migrations:latest
+
+      # 8. Build and Push OTA Manager Image
+      - name: Build and push OTA Manager Image
+        uses: docker/build-push-action@v5
+        with:
+          context: ./ota-manager
+          platforms: linux/amd64,linux/arm64
+          push: true
+          tags: |
+            ghcr.io/ishaiasor/smarthome-ota-manager:${{ steps.tag_version.outputs.new_tag }}
+            ghcr.io/ishaiasor/smarthome-ota-manager:latest
           cache-from: type=gha
           cache-to: type=gha,mode=max

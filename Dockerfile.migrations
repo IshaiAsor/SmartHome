@@ -1,0 +1,9 @@
+# Use the official Atlas image
+FROM arigaio/atlas:latest
+
+# Copy the migrations directory
+COPY migrations /migrations
+
+# Metadata
+LABEL maintainer="ishaiasor@gmail.com"
+LABEL description="Database migrations for IoT Smart Home"

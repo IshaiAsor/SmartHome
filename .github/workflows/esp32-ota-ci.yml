@@ -1,0 +1,73 @@
+name: ESP32 Firmware CI/CD
+
+on:
+  push:
+    tags:
+      - 'v*' # Trigger on version tags like v1.1.0
+
+jobs:
+  build-and-upload-staging:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Cache pip
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/pip
+          key: ${{ runner.os }}-pip-${{ hashFiles('**/requirements.txt') }}
+          restore-keys: |
+            ${{ runner.os }}-pip-
+
+      - name: Cache PlatformIO
+        uses: actions/cache@v4
+        with:
+          path: ~/.platformio
+          key: ${{ runner.os }}-platformio-${{ hashFiles('**/platformio.ini') }}
+          restore-keys: |
+            ${{ runner.os }}-platformio-
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-python-version: '3.11'
+
+      - name: Install PlatformIO
+        run: |
+          python -m pip install --upgrade pip
+          pip install --upgrade platformio
+
+      - name: Build Firmware
+        run: |
+          cd iot-smart-home/ESP32Code
+          # Build for mini-prod (or your primary target)
+          pio run -e esp32s3_mini-prod
+
+      - name: Upload to Staging OTA Manager
+        run: |
+          VERSION=${GITHUB_REF#refs/tags/}
+          curl -X POST https://ota.iotiotstg.duckdns.org/release \
+            -F "firmware=@iot-smart-home/ESP32Code/.pio/build/esp32s3_mini-prod/firmware.bin" \
+            -F "deviceType=ESP32_SmartOutlet" \
+            -F "version=$VERSION" \
+            -F "releaseNotes=Automated build for $VERSION"
+
+  # This job updates the git repo to inform Kargo of a new "Firmware Freight"
+  register-freight:
+    needs: build-and-upload-staging
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          repository: IshaiAsor/oci-k3s-gitops
+          token: ${{ secrets.GITOPS_REPO_TOKEN }}
+      
+      - name: Update Firmware Version for Kargo
+        run: |
+          VERSION=${GITHUB_REF#refs/tags/}
+          echo $VERSION > firmware-version.txt
+          git config user.name "github-actions"
+          git config user.email "github-actions@github.com"
+          git add firmware-version.txt
+          git commit -m "chore: new firmware freight $VERSION"
+          git push

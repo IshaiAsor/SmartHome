@@ -1,0 +1,15 @@
+#!/bin/bash
+set -e
+
+# Create the application user
+psql -v ON_ERROR_STOP=1 --username "$POSTGRES_USER" --dbname "$POSTGRES_DB" <<-EOSQL
+    DO \$$
+    BEGIN
+        IF NOT EXISTS (SELECT FROM pg_catalog.pg_roles WHERE rolname = '${BACKEND_DB_USER}') THEN
+            CREATE USER ${BACKEND_DB_USER} WITH PASSWORD '${BACKEND_DB_PASSWORD}';
+        END IF;
+    END
+    \$$;
+    GRANT SELECT, INSERT, UPDATE, DELETE ON ALL TABLES IN SCHEMA PUBLIC TO ${BACKEND_DB_USER};
+    GRANT USAGE, SELECT ON ALL SEQUENCES IN SCHEMA PUBLIC TO ${BACKEND_DB_USER};
+EOSQL
