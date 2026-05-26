@@ -129,6 +129,11 @@ CREATE TABLE IF NOT EXISTS mqtt_user (
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
+-- GRANTS (Roles will be created by the Job wrapper)
+GRANT SELECT, INSERT, UPDATE, DELETE ON ALL TABLES IN SCHEMA PUBLIC TO app_user;
+GRANT USAGE, SELECT ON ALL SEQUENCES IN SCHEMA PUBLIC TO app_user;
+GRANT SELECT ON mqtt_user TO emqx;
+
 -- Initial Device Data
 INSERT INTO devices (type, version, default_name, created_at, updated_at)
 VALUES ('ESP32_SmartOutlet', 'V1.0.0', 'ESP32_SmartOutlet', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
