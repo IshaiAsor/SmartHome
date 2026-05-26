@@ -43,14 +43,14 @@ jobs:
 
       - name: Build Firmware
         run: |
-          cd iot-smart-home/ESP32Code
+          cd ESP32Code
           pio run -e esp32s3_mini-prod
 
       - name: Upload to Staging OTA Manager
         run: |
           VERSION=${{ steps.tag_version.outputs.new_tag }}
           curl -X POST https://ota.iotiotstg.duckdns.org/release \
-            -F "firmware=@iot-smart-home/ESP32Code/.pio/build/esp32s3_mini-prod/firmware.bin" \
+            -F "firmware=@ESP32Code/.pio/build/esp32s3_mini-prod/firmware.bin" \
             -F "deviceType=ESP32_SmartOutlet" \
             -F "version=$VERSION" \
             -F "releaseNotes=Automated build for $VERSION"
