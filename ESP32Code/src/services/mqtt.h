@@ -17,14 +17,14 @@ private:
     WiFiClientSecure &espClient;
     PubSubClient *client = nullptr;
     PreferencesManagerService prefService;
-    JwtService jwtService;
+    JwtService &jwtService;
     JwtToken *jwtData = nullptr;
-    MqttCredentials *mqttCreds = nullptr;
+    MqttCredentials *creds = nullptr;
     MqttActionsHandlerService *mqttActionsHandler;
     OtaService *otaService = nullptr;
 
 public:
-    MqttService(WiFiClientSecure &espClient) : espClient(espClient)
+    MqttService(WiFiClientSecure &espClient, JwtService &jwtService) : espClient(espClient), jwtService(jwtService)
     {
         espClient.setCACert(root_ca);
         espClient.setHandshakeTimeout(10000);
@@ -41,10 +41,54 @@ public:
         return client->connected();
     }
 
-    bool testMqtt()
+     bool testMqtt(MqttCredentials *creds, JwtToken *token)
     {
-        return reconnectMqtt();
+        Serial.println("Attempting to connect to MQTT... ");
+        if (!creds->validateCACert)
+        {
+            espClient.setInsecure();
+        }
+        else
+        {
+            espClient.setCACert(root_ca);
+        }
+
+        client->setServer(creds->server.c_str(), creds->port);
+
+        
+        int attempt = 0;
+        const int max_attempts = 5;
+        client->setCallback(MqttActionsHandlerService::callback);
+
+        while (!client->connected() && attempt < max_attempts)
+        {
+            if (client->connect(creds->clientId.c_str(), creds->userId.c_str(), token->token.c_str()))
+            {
+                Serial.println("connected");
+            }
+            else
+            {
+                Serial.print("failed, rc=");
+                Serial.print(client->state());
+                char err_buf[100];
+                espClient.lastError(err_buf, 100);
+                Serial.print(" | SSL Error: ");
+                Serial.println(err_buf);
+                Serial.println(" try again in 5 seconds");
+                delay(5000);
+                attempt++;
+            }
+        }
+
+        if (!client->connected())
+        {
+            Serial.println("Max MQTT connection attempts reached. Clearing credentials and restarting...");
+
+            return false;
+        }
+        return true;
     }
+
 
     bool reconnectMqtt()
     {
@@ -59,19 +103,19 @@ public:
                 return false;
             }
         }
-        if (mqttCreds == nullptr)
+        if (creds == nullptr)
         {
             Serial.println("No MQTT credentials available. Cannot connect to MQTT.");
-            mqttCreds = prefService.LoadMqttServerCredentials();
+            creds = prefService.LoadMqttServerCredentials();
 
-            if (!mqttCreds)
+            if (!creds)
             {
                 Serial.println("No MQTT credentials available. Cannot connect to MQTT.");
                 return false;
             }
         }
 
-        if (!mqttCreds->validateCACert)
+        if (!creds->validateCACert)
         {
             espClient.setInsecure();
         }
@@ -80,19 +124,19 @@ public:
             espClient.setCACert(root_ca);
         }
 
-        client->setServer(mqttCreds->server.c_str(), mqttCreds->port);
+        client->setServer(creds->server.c_str(), creds->port);
 
         String commandTopicStr = String(COMMAND_TOPIC);
-        commandTopicStr.replace("%{userid}", mqttCreds->userId.c_str());
-        commandTopicStr.replace("%{deviceid}", mqttCreds->clientId.c_str());
+        commandTopicStr.replace("%{userid}", creds->userId.c_str());
+        commandTopicStr.replace("%{deviceid}", creds->clientId.c_str());
 
         String statusTopicStr = String(STATUS_TOPIC);
-        statusTopicStr.replace("%{userid}", mqttCreds->userId.c_str());
-        statusTopicStr.replace("%{deviceid}", mqttCreds->clientId.c_str());
+        statusTopicStr.replace("%{userid}", creds->userId.c_str());
+        statusTopicStr.replace("%{deviceid}", creds->clientId.c_str());
 
         String telemetryTopicStr = String(TELEMETRY_TOPIC);
-        telemetryTopicStr.replace("%{userid}", mqttCreds->userId.c_str());
-        telemetryTopicStr.replace("%{deviceid}", mqttCreds->clientId.c_str());
+        telemetryTopicStr.replace("%{userid}", creds->userId.c_str());
+        telemetryTopicStr.replace("%{deviceid}", creds->clientId.c_str());
 
         String otaTopicStr = String(OTA_TOPIC);
         otaTopicStr.replace("%{devicetype}", DEVICE_TYPE);
@@ -102,7 +146,7 @@ public:
 
         while (!client->connected() && attempt < max_attempts)
         {
-            if (client->connect(mqttCreds->clientId.c_str(), mqttCreds->userId.c_str(), jwtData->token.c_str(), statusTopicStr.c_str(), 0, true, "offline"))
+            if (client->connect(creds->clientId.c_str(), creds->userId.c_str(), jwtData->token.c_str(), statusTopicStr.c_str(), 0, true, "offline"))
             {
                 client->publish(statusTopicStr.c_str(), "online", true);
                 client->subscribe(commandTopicStr.c_str());
@@ -138,6 +182,17 @@ public:
     {
         if (client != nullptr && client->connected())
         {
+            if (jwtData == nullptr)
+            {
+                Serial.println("No cached JWT token in MQTT service. Loading from storage...");
+                jwtData = jwtService.GetCurrentJwtToken();
+                if (!jwtData)
+                {
+                    Serial.println("Unable to retrieve JWT token for refresh. Clearing credentials and restarting...");
+                    prefService.ClearCredentials();
+                    ESP.restart();
+                }
+            }
             if (!jwtService.RefreshJwtTokenIfNeeded())
             {
                 Serial.println("Failed to refresh JWT token. Clearing credentials and restarting...");
@@ -167,8 +222,8 @@ public:
         if (client != nullptr && client->connected())
         {
             String telemetryTopicStr = String(TELEMETRY_TOPIC);
-            telemetryTopicStr.replace("%{userid}", mqttCreds->userId.c_str());
-            telemetryTopicStr.replace("%{deviceid}", mqttCreds->clientId.c_str());
+            telemetryTopicStr.replace("%{userid}", creds->userId.c_str());
+            telemetryTopicStr.replace("%{deviceid}", creds->clientId.c_str());
             telemetryTopicStr.replace("#", actionType);
             client->publish(telemetryTopicStr.c_str(), payload);
         }

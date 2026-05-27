@@ -8,6 +8,7 @@
 #include "HttpJsonClientService.h"
 #include "models/GetLongLivedTokenRequest.h"
 #include "models/GetLongLivedTokenResponse.h"
+#include "models/RegisterDeviceResponse.h"
 #include <WiFi.h>
 #include "config/settings.h"
 #include "models/ProvisioningData.h"
@@ -20,7 +21,7 @@ class JwtService
 {
 private:
     PreferencesManagerService prefService;
-    HttpJsonClientService<GetLongLivedTokenRequest, GetLongLivedTokenResponse> longLivedTokenHttpClient;
+    HttpJsonClientService<GetLongLivedTokenRequest, RegisterDeviceResponse> longLivedTokenHttpClient;
     HttpJsonClientService<RefreashTokenRequest, GetLongLivedTokenResponse> refreashTokenHttpClient;
 
     const char *deviceType = DEVICE_TYPE;
@@ -140,7 +141,8 @@ public:
             .token = response.mqttToken,
             .refreshToken = response.refreshToken,
             .refreshTokenCallbackUrl = response.refreshTokenCallbackUrl,
-            .validateCACert = response.validateCACert};
+            .validateCACert = response.validateCACert,
+            .deviceId = response.deviceId};
 
         tokenExp = getExpFromToken(response.mqttToken);
 
@@ -148,9 +150,8 @@ public:
         return true;
     }
 
-    JwtToken *RequestPermenentJwtToken(ProvisioningData &pData, String provisioningToken)
+    JwtToken *RequestTempJwtToken(ProvisioningData &pData, String provisioningToken, String &registrationId, String &finalizeUrl)
     {
-
         GetLongLivedTokenRequest request;
         request.macAddress = WiFi.macAddress();
         request.deviceType = deviceType;
@@ -158,11 +159,41 @@ public:
         request.version = DEVICE_VERSION;
         request.deviceId = GetDeviceId();
 
-        GetLongLivedTokenResponse response = longLivedTokenHttpClient.PostJson(pData.provisioningCallbackUrl, pData.provisioningToken, &request, pData.validateCACert);
+        RegisterDeviceResponse response = longLivedTokenHttpClient.PostJson(pData.provisioningCallbackUrl, pData.provisioningToken, &request, pData.validateCACert);
 
         if (response.mqttToken == "")
         {
-            Serial.println("Failed to obtain permanent MQTT token from provisioning server.");
+            Serial.println("Failed to obtain temporary MQTT token from provisioning server.");
+            return nullptr;
+        }
+
+        Serial.println("Temporary MQTT token received:");
+        Serial.println(response.mqttToken);
+
+        registrationId = response.registrationId;
+        finalizeUrl = response.finalizeCallbackUrl;
+
+        jwtData = new JwtToken{
+            .token = response.mqttToken,
+            .refreshToken = "", // No refresh token for temp access
+            .refreshTokenCallbackUrl = "",
+            .validateCACert = response.validateCACert,
+            .deviceId = 0}; // Temp deviceId
+
+        return jwtData;
+    }
+
+    JwtToken *FinalizeRegistration(String finalizeUrl, String registrationId, bool validateCACert)
+    {
+        FinalizeRegistrationRequest request;
+        request.registrationId = registrationId;
+
+        HttpJsonClientService<FinalizeRegistrationRequest, GetLongLivedTokenResponse> finalizeHttpClient;
+        GetLongLivedTokenResponse response = finalizeHttpClient.PostJson(finalizeUrl, "", &request, validateCACert);
+
+        if (response.mqttToken == "")
+        {
+            Serial.println("Failed to finalize registration.");
             return nullptr;
         }
 

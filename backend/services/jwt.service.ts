@@ -6,6 +6,7 @@ export enum JwtPurpose {
     app_usage_refresh,
     device_provisioning,
     device_usage,
+    device_temp_usage,
     device_usage_refresh,
     google_cloud_to_cloud_login,
     google_cloud_to_cloud_login_refresh
@@ -35,6 +36,11 @@ class JwtService {
                 case JwtPurpose.device_usage:
                 {
                     tokenExp = config.Jwt.deviceExpiresIn;
+                    break;
+                }
+                case JwtPurpose.device_temp_usage:
+                {
+                    tokenExp = config.Jwt.deviceTempExpiresIn;
                     break;
                 }
                 case JwtPurpose.device_usage_refresh:

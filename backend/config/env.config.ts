@@ -55,6 +55,7 @@ export interface JwtConfig {
   deviceProvisioningExpiresIn: number;
   deviceExpiresIn: number;
   deviceRefreshExpiresIn: number;
+  deviceTempExpiresIn: number;
 }
 
 export class RedidConfig {
@@ -106,6 +107,9 @@ const config: EnvConfig = {
     deviceExpiresIn: process.env.JWT_DEVICE_USAGE_EXPIRES_IN
       ? parseInt(process.env.JWT_DEVICE_USAGE_EXPIRES_IN)
       : 0,
+    deviceTempExpiresIn: process.env.JWT_DEVICE_TEMP_USAGE_EXPIRES_IN
+      ? parseInt(process.env.JWT_DEVICE_TEMP_USAGE_EXPIRES_IN)
+      : 300, // Default to 5 minutes
     deviceRefreshExpiresIn: process.env.JWT_DEVICE_USAGE_REFRESH_EXPIRES_IN
       ? parseInt(process.env.JWT_DEVICE_USAGE_REFRESH_EXPIRES_IN)
       : 0,

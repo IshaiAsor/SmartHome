@@ -46,6 +46,15 @@ router.post('/register-device', verifyToken(JwtPurpose.device_provisioning),asyn
   res.json(permanentToken);
 });
 
+router.post('/finalize-registration', async (req: Request, res: Response) => {
+  const registrationId = req.body.registrationId;
+  if (!registrationId) {
+    return res.status(400).send('Missing registrationId');
+  }
+  let result = await provisioningService.finalizeRegistration(registrationId);
+  res.json(result);
+});
+
 router.post('/refresh-token', verifyToken(JwtPurpose.device_usage_refresh), async (req: Request, res: Response) => {
   const refreshToken = req.body.refreshToken;
   var result = await provisioningService.RefreshMqttToken(refreshToken);

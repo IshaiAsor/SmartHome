@@ -46,7 +46,7 @@ PreferencesManagerService prefService;
 JwtService jwtService;
 DateTimeSyncService dateTimeSyncService;
 BleServer bleServer;
-MqttService mqttService(espClient);
+MqttService mqttService(espClient, jwtService);
 BleNotificationService bleNotificationService(&bleServer, &bleResponseQueue);
 ProvisioningCallbacks provisioningCallbacks(&bleNotificationService, &provisioningQueue);
 ProvisioningBleService provisioningBleService(&bleNotificationService, &dateTimeSyncService, &wm, &prefService, &jwtService, &mqttService);
@@ -147,7 +147,9 @@ void setup()
     {
       dateTimeSyncService.syncTime();
 
-      if (!mqttService.testMqtt())
+      JwtToken *jwtData = jwtService.GetCurrentJwtToken();
+      MqttCredentials *creds = prefService.LoadMqttServerCredentials();
+      if (!creds || !jwtData || !mqttService.testMqtt(creds, jwtData))
       {
         Serial.println("MQTT test failed after WiFi connected. Entering provisioning mode...");
         if (PROVISION_ON_ERROR)

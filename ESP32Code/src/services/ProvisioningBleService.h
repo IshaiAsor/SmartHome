@@ -122,47 +122,59 @@ public:
         Serial.print("Device ID: ");
         Serial.println(deviceID);
 
-        // Step 4: Exchange tokens with server
-        Serial.println("Exchanging tokens with provisioning server...");
-        bleNotificationService->NotifyBleDevice(ResponseType::EXCHANGING_TOKENS_WITH_SERVER, "OK: Exchanging tokens...");
+        // Step 4: Exchange tokens with server (Step 1: Register)
+        Serial.println("Requesting temporary MQTT token from provisioning server...");
+        bleNotificationService->NotifyBleDevice(ResponseType::EXCHANGING_TOKENS_WITH_SERVER, "OK: Requesting temp token...");
 
-        JwtToken *jwtData = jwtService->RequestPermenentJwtToken(pData, pData.provisioningToken);
+        String registrationId;
+        String finalizeUrl;
+        JwtToken *tempJwtData = jwtService->RequestTempJwtToken(pData, pData.provisioningToken, registrationId, finalizeUrl);
 
-        if (jwtData == nullptr)
+        if (tempJwtData == nullptr)
         {
-            Serial.println("Failed to request permanent JWT token.");
-            bleNotificationService->NotifyBleDevice(ResponseType::PROVISIONING_FAILED, "Failed to exchange tokens with server.");
+            Serial.println("Failed to request temporary JWT token.");
+            bleNotificationService->NotifyBleDevice(ResponseType::PROVISIONING_FAILED, "Failed to get temp token from server.");
             return;
         }
-
-        bleNotificationService->NotifyBleDevice(ResponseType::TOKENS_EXCHANGED_SUCCESSFULLY, "OK: Tokens exchanged");
 
         MqttCredentials mqttCreds;
         mqttCreds.server = pData.server;
         mqttCreds.port = pData.mqttPort;
         mqttCreds.validateCACert = pData.validateCACert;
-        mqttCreds.clientId = jwtData->deviceId;
+        mqttCreds.clientId = WiFi.macAddress(); // Use MAC for temp clientid
         mqttCreds.userId = pData.userId;
 
-        prefService->SaveMqttServerCredentials(mqttCreds);
-        Serial.println("MQTT credentials and JWT token saved.");
+        // Note: We don't save to preferences yet, just use in memory
+      //  mqttService->updateCredentials(mqttCreds, tempJwtData->token);
 
         // Test MQTT connection
-        Serial.println("Testing MQTT connection...");
+        Serial.println("Testing MQTT connection with temp token...");
         bleNotificationService->NotifyBleDevice(ResponseType::TESTING_MQTT_CONNECTION, "OK: Testing MQTT...");
 
-        if (!mqttService->reconnectMqtt())
+        if (!mqttService->testMqtt(&mqttCreds, tempJwtData))
         {
             Serial.println("MQTT connection failed.");
             bleNotificationService->NotifyBleDevice(ResponseType::PROVISIONING_FAILED, "FAIL: MQTT connection failed.");
-            prefService->ClearCredentials(); // Clear credentials to allow retry
-                                             // ESP.restart(); // Restart to re-enter provisioning mode
         }
         else
         {
-            Serial.println("MQTT connection successful! Provisioning complete.");
-            bleNotificationService->NotifyBleDevice(ResponseType::MQTT_CONNECTION_SUCCESSFUL, "OK: MQTT Connected");
+            Serial.println("MQTT connection successful! Finalizing registration...");
+            bleNotificationService->NotifyBleDevice(ResponseType::MQTT_CONNECTION_SUCCESSFUL, "OK: MQTT Connected, Finalizing...");
 
+            JwtToken *permanentJwtData = jwtService->FinalizeRegistration(finalizeUrl, registrationId, pData.validateCACert);
+
+            if (permanentJwtData == nullptr)
+            {
+                Serial.println("Finalization failed.");
+                bleNotificationService->NotifyBleDevice(ResponseType::PROVISIONING_FAILED, "FAIL: Finalization failed.");
+                return;
+            }
+
+            // Update credentials for permanent use
+            mqttCreds.clientId = String(permanentJwtData->deviceId);
+            prefService->SaveMqttServerCredentials(mqttCreds);
+            
+            Serial.println("Provisioning successful and finalized!");
             bleNotificationService->NotifyBleDevice(ResponseType::PROVISIONING_SUCCESSFUL, "OK: Provisioning Complete");
 
             onboardLed.execute("green");

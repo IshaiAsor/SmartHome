@@ -1,5 +1,6 @@
 #pragma once
 #include <HTTPClient.h>
+#include <WiFiClient.h>
 #include <WiFiClientSecure.h>
 #include <ArduinoJson.h>
 #include <type_traits>
@@ -15,6 +16,7 @@ class HttpJsonClientService
 private:
     HTTPClient httpClient;
     WiFiClientSecure secureClient;
+    WiFiClient plainClient;
 
 public:
     HttpJsonClientService() {}
@@ -22,25 +24,29 @@ public:
 
     TOut PostJson(const String url, const String token, const TIn *payload, bool validateCACert)
     {
-         Serial.write("Post request");
+        Serial.write("Post request");
         Serial.print("url : ");
         Serial.println(url);
         Serial.print("token : ");
         Serial.println(token);
         Serial.print("validateCACert : ");
         Serial.println(validateCACert);
-        Serial.print("root_ca : ");
-        Serial.println(root_ca);
-        Serial.println(validateCACert);
-        if (validateCACert)
+
+        if (url.startsWith("https://"))
         {
-            secureClient.setCACert(root_ca);
+            if (validateCACert)
+            {
+                secureClient.setCACert(root_ca);
+            }
+            else
+            {
+                secureClient.setInsecure();
+            }
             httpClient.begin(secureClient, url.c_str());
         }
         else
         {
-            secureClient.setInsecure();
-            httpClient.begin(secureClient, url.c_str());
+            httpClient.begin(plainClient, url.c_str());
         }
 
         httpClient.addHeader("Content-Type", "application/json");
@@ -63,8 +69,6 @@ public:
             Serial.println("Received response:");
             Serial.println(responseBody);
 
-            // FIX: Use JsonDocument without a fixed size.
-            // It will automatically manage memory on the heap.
             JsonDocument doc;
             DeserializationError error = deserializeJson(doc, responseBody);
 
@@ -73,11 +77,11 @@ public:
                 Serial.print("Failed to parse JSON response: ");
                 Serial.println(error.c_str());
                 httpClient.end();
-                return TOut(); // Fixed: return default constructor for template type
+                return TOut(); 
             }
 
             TOut output;
-            output.fromJson(doc); // Ensure your TOut classes implement this method
+            output.fromJson(doc); 
             httpClient.end();
             return output;
         }
@@ -85,8 +89,8 @@ public:
         {
             Serial.print("HTTP POST failed, code: ");
             Serial.println(httpResponseCode);
-            httpClient.end(); // Always close the connection
-            return TOut();    // Fixed: return default constructor
+            httpClient.end(); 
+            return TOut();    
         }
     }
 
@@ -99,18 +103,22 @@ public:
         Serial.println(token);
         Serial.print("validateCACert : ");
         Serial.println(validateCACert);
-        Serial.print("root_ca : ");
-        Serial.println(root_ca);
-        Serial.println(validateCACert);
-        if (validateCACert)
+
+        if (url.startsWith("https://"))
         {
-            secureClient.setCACert(root_ca);
+            if (validateCACert)
+            {
+                secureClient.setCACert(root_ca);
+            }
+            else
+            {
+                secureClient.setInsecure();
+            }
             httpClient.begin(secureClient, url.c_str());
         }
         else
         {
-            secureClient.setInsecure();
-            httpClient.begin(secureClient, url.c_str());
+            httpClient.begin(plainClient, url.c_str());
         }
 
         httpClient.addHeader("Content-Type", "application/json");
@@ -125,8 +133,6 @@ public:
             Serial.println("Received response:");
             Serial.println(responseBody);
 
-            // FIX: Use JsonDocument without a fixed size.
-            // It will automatically manage memory on the heap.
             JsonDocument doc;
             DeserializationError error = deserializeJson(doc, responseBody);
 
@@ -135,11 +141,11 @@ public:
                 Serial.print("Failed to parse JSON response: ");
                 Serial.println(error.c_str());
                 httpClient.end();
-                return TOut(); // Fixed: return default constructor for template type
+                return TOut(); 
             }
 
             TOut output;
-            output.fromJson(doc); // Ensure your TOut classes implement this method
+            output.fromJson(doc); 
             httpClient.end();
             return output;
         }
@@ -147,8 +153,8 @@ public:
         {
             Serial.print("HTTP GET failed, code: ");
             Serial.println(httpResponseCode);
-            httpClient.end(); // Always close the connection
-            return TOut();    // Fixed: return default constructor
+            httpClient.end(); 
+            return TOut();    
         }
     }
 };
