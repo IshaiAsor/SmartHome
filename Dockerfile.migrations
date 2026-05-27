@@ -1,5 +1,10 @@
-# Use the official Atlas image
-FROM arigaio/atlas:latest
+# Build a shell-capable migration image based on Atlas
+FROM debian:bookworm-slim
+
+RUN apt-get update && apt-get install -y --no-install-recommends ca-certificates && rm -rf /var/lib/apt/lists/*
+
+# Copy the Atlas CLI binary from the official Atlas image
+COPY --from=arigaio/atlas:latest /atlas /usr/local/bin/atlas
 
 # Copy the migrations directory
 COPY migrations /migrations
