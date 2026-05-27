@@ -5,7 +5,7 @@ CREATE EXTENSION IF NOT EXISTS pgcrypto;
 CREATE TABLE IF NOT EXISTS google_action_types (
       id SERIAL PRIMARY KEY,
       name VARCHAR(255) NOT NULL,
-      value VARCHAR(255) NOT NULL,
+      value VARCHAR(255) NOT NULL UNIQUE,
       created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
@@ -18,13 +18,13 @@ INSERT INTO google_action_types (name, value) VALUES
     ('Fan', 'action.devices.types.FAN'),
     ('Blinds', 'action.devices.types.BLINDS'),
     ('Sensor', 'action.devices.types.SENSOR')
-ON CONFLICT DO NOTHING;
+ON CONFLICT (value) DO NOTHING;
 
 -- Google Device Traits
 CREATE TABLE IF NOT EXISTS google_device_traits (
             id SERIAL PRIMARY KEY,
             name VARCHAR(255) NOT NULL,
-            value VARCHAR(255) NOT NULL,
+            value VARCHAR(255) NOT NULL UNIQUE,
             valid_parameters JSONB,
             created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
         );
@@ -37,13 +37,13 @@ INSERT INTO google_device_traits (name, value, valid_parameters) VALUES
     ('Open / Close', 'action.devices.traits.OpenClose', '["openPercent", "openDirection"]'),
     ('Temperature Setting', 'action.devices.traits.TemperatureSetting', '["thermostatMode", "thermostatTemperatureSetpoint", "thermostatTemperatureSetpointHigh", "thermostatTemperatureSetpointLow"]'),
     ('Fan Speed', 'action.devices.traits.FanSpeed', '["fanSpeed", "fanSpeedRelativeWeight", "fanSpeedRelativePercentage"]')
-ON CONFLICT DO NOTHING;
+ON CONFLICT (value) DO NOTHING;
 
 -- Device Action Types
 CREATE TABLE IF NOT EXISTS device_action_types (
         id SERIAL PRIMARY KEY,
         description VARCHAR(255) NOT NULL,
-        google_type_id INTEGER NOT NULL REFERENCES google_action_types(id) ON DELETE CASCADE    
+        google_type_id INTEGER NOT NULL REFERENCES google_action_types(id) ON DELETE CASCADE
 );
 
 -- Devices
@@ -51,7 +51,7 @@ CREATE TABLE IF NOT EXISTS devices (
         id SERIAL PRIMARY KEY,
         type VARCHAR(255),
         version VARCHAR(255),
-        default_name VARCHAR(255) NOT NULL,
+        default_name VARCHAR(255) NOT NULL UNIQUE,
         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
         updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
       );
@@ -63,7 +63,8 @@ CREATE TABLE IF NOT EXISTS device_actions (
         default_name VARCHAR(255) NOT NULL,
         google_type_id INTEGER NOT NULL,
         mqtt_action_type VARCHAR(255),
-        mqtt_action_name VARCHAR(255)
+        mqtt_action_name VARCHAR(255),
+        UNIQUE (device_id, default_name)
 );
 
 -- Action Type Traits
@@ -76,10 +77,10 @@ CREATE TABLE IF NOT EXISTS action_type_traits (
 -- Users
 CREATE TABLE IF NOT EXISTS users (
         id SERIAL PRIMARY KEY ,
-        user_type INT NOT NULL DEFAULT 0, -- 0 for regular users, 1 for google users
-        user_role VARCHAR(50) NOT NULL DEFAULT 'user', -- 'user' or 'admin'
-        user_name VARCHAR(255) UNIQUE, -- Only for regular users
-        password VARCHAR(255), -- Only for regular users
+        user_type INT NOT NULL DEFAULT 0,
+        user_role VARCHAR(50) NOT NULL DEFAULT 'user',
+        user_name VARCHAR(255) UNIQUE,
+        password VARCHAR(255),
         google_id VARCHAR(255) UNIQUE,
         email VARCHAR(255) UNIQUE NOT NULL,
         full_name VARCHAR(255),
@@ -137,21 +138,24 @@ GRANT SELECT ON mqtt_user TO emqx;
 -- Initial Device Data
 INSERT INTO devices (type, version, default_name, created_at, updated_at)
 VALUES ('ESP32_SmartOutlet', 'V1.0.0', 'ESP32_SmartOutlet', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
-ON CONFLICT DO NOTHING;
+ON CONFLICT (default_name) DO NOTHING;
 
 -- Initial Device Actions
 INSERT INTO device_actions (device_id, default_name, google_type_id, mqtt_action_type, mqtt_action_name)
-SELECT id, 'outlet1', (SELECT id FROM google_action_types WHERE value = 'action.devices.types.OUTLET'), 'command', 'outlet1'
-FROM devices WHERE default_name = 'ESP32_SmartOutlet'
-ON CONFLICT DO NOTHING;
+SELECT d.id, 'outlet1', t.id, 'command', 'outlet1'
+FROM devices d, google_action_types t
+WHERE d.default_name = 'ESP32_SmartOutlet' AND t.value = 'action.devices.types.OUTLET'
+ON CONFLICT (device_id, default_name) DO NOTHING;
 
 INSERT INTO device_actions (device_id, default_name, google_type_id, mqtt_action_type, mqtt_action_name)
-SELECT id, 'Tempture Sensor 1', (SELECT id FROM google_action_types WHERE value = 'action.devices.types.SENSOR'), 'telemetry', 'sensor1'
-FROM devices WHERE default_name = 'ESP32_SmartOutlet'
-ON CONFLICT DO NOTHING;
+SELECT d.id, 'Tempture Sensor 1', t.id, 'telemetry', 'sensor1'
+FROM devices d, google_action_types t
+WHERE d.default_name = 'ESP32_SmartOutlet' AND t.value = 'action.devices.types.SENSOR'
+ON CONFLICT (device_id, default_name) DO NOTHING;
 
 -- Initial Action Type Traits
-INSERT INTO action_type_traits (device_action_type_id, google_trait_id) 
-SELECT id, (SELECT id FROM google_device_traits WHERE value = 'action.devices.traits.OnOff')
-FROM device_actions WHERE default_name = 'outlet1'
+INSERT INTO action_type_traits (device_action_type_id, google_trait_id)
+SELECT da.id, gt.id
+FROM device_actions da, google_device_traits gt
+WHERE da.default_name = 'outlet1' AND gt.value = 'action.devices.traits.OnOff'
 ON CONFLICT DO NOTHING;
