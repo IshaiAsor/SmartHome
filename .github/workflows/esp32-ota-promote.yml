@@ -18,7 +18,7 @@ jobs:
       - name: Upload to Production OTA Manager
         run: |
           curl -X POST https://ota.iotiot.duckdns.org/release \
-            -F "firmware=@firmware.bin" \
             -F "deviceType=ESP32_SmartOutlet" \
             -F "version=${{ github.event.inputs.version }}" \
-            -F "releaseNotes=Promoted from Staging: ${{ github.event.inputs.version }}"
+            -F "releaseNotes=Promoted from Staging: ${{ github.event.inputs.version }}" \
+            -F "firmware=@firmware.bin"

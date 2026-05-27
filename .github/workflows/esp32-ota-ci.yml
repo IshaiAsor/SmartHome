@@ -50,10 +50,10 @@ jobs:
         run: |
           VERSION=${{ steps.tag_version.outputs.new_tag }}
           curl -X POST https://ota.iotiotstg.duckdns.org/release \
-            -F "firmware=@ESP32Code/.pio/build/esp32s3_mini-prod/firmware.bin" \
             -F "deviceType=ESP32_SmartOutlet" \
             -F "version=$VERSION" \
-            -F "releaseNotes=Automated build for $VERSION"
+            -F "releaseNotes=Automated build for $VERSION" \
+            -F "firmware=@ESP32Code/.pio/build/esp32s3_mini-prod/firmware.bin"
 
   register-freight:
     needs: build-and-upload-staging
