@@ -3,7 +3,7 @@
 #include <vector>
 #include <string>
 #include <Arduino.h>
-#include ".\BaseCommandAction.h"
+#include "BaseCommandAction.h"
 
 
 class OutletCommandAction : public BaseCommandAction
