@@ -19,7 +19,7 @@ COPY prisma/ ./
 WORKDIR /app/backend
 COPY backend/package*.json ./
 RUN npm install && \
-    ln -sf /app/backend/node_modules/@prisma /app/prisma/node_modules/@prisma
+    ln -sf /app/backend/node_modules/@prisma/client /app/prisma/node_modules/@prisma/client
 COPY backend/ ./
 RUN npm run build
 RUN npm prune --production
