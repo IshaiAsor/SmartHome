@@ -27,6 +27,10 @@ export class UserActionsService {
     );
   }
 
+  reorderActions(orderedIds: number[]) {
+    return this.http.put<void>(`${this.apiUrl}/api/mgmt/actions/order`, { orderedIds });
+  }
+
   delete(action: DeviceActionView) {
     return this.http.delete<void>(`${this.apiUrl}/api/mgmt/actions/${action.id}`);
   }

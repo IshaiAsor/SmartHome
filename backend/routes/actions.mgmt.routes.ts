@@ -14,6 +14,13 @@ router.get('/', async (req, res) => {
   res.json(actions);
 });
 
+router.put('/order', async (req, res) => {
+  const userId = req.user.id;
+  const { orderedIds } = req.body as { orderedIds: number[] };
+  await deviceActionsService.reorderActions(userId, orderedIds);
+  res.status(204).send();
+});
+
 router.patch('/:actionId', async (req, res) => {
   const actionId = parseInt(req.params.actionId);
   await deviceActionsService.updateAction(actionId, req.body);

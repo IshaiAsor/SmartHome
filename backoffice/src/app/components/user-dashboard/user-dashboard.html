@@ -1,12 +1,16 @@
 <div class="header">
     <h1></h1>
 </div>
-<div class="card-grid">
+<div class="card-grid" cdkDropList cdkDropListOrientation="mixed" (cdkDropListDropped)="drop($event)">
     <ng-container *ngFor="let action of actions">
         <mat-card appearance="outlined" *ngIf="action.googleType.name === 'Outlet'"
-            [ngClass]="action.online ? 'card-enabled' : 'card-disabled'">
+            [ngClass]="action.online ? 'card-enabled' : 'card-disabled'"
+            cdkDrag>
             <mat-card-header>
                 <mat-card-title-group>
+                    <span class="drag-handle" cdkDragHandle>
+                        <mat-icon>drag_indicator</mat-icon>
+                    </span>
                     <span class="material-symbols-outlined">outlet</span>
                     <mat-card-title>{{ action.name }}</mat-card-title>
                 </mat-card-title-group>
@@ -20,12 +24,17 @@
                     <mat-icon>edit</mat-icon>
                 </button>
             </mat-card-actions>
+            <div *cdkDragPlaceholder class="drag-placeholder"></div>
         </mat-card>
 
         <mat-card class="weather-card" appearance="outlined" *ngIf="action.googleType.name === 'Sensor'"
-            [ngClass]="action.online ? 'card-enabled' : 'card-disabled'">
+            [ngClass]="action.online ? 'card-enabled' : 'card-disabled'"
+            cdkDrag>
             <mat-card-header>
                 <mat-card-title-group>
+                    <span class="drag-handle" cdkDragHandle>
+                        <mat-icon>drag_indicator</mat-icon>
+                    </span>
                     <span class="material-symbols-outlined">thermometer</span>
                     <mat-card-title>{{ action.name }}</mat-card-title>
                 </mat-card-title-group>
@@ -39,6 +48,7 @@
                     <mat-icon>edit</mat-icon>
                 </button>
             </mat-card-actions>
+            <div *cdkDragPlaceholder class="drag-placeholder"></div>
         </mat-card>
     </ng-container>
 </div>

@@ -15,6 +15,7 @@ import { MatTooltipModule } from '@angular/material/tooltip';
 import { MatToolbarModule } from '@angular/material/toolbar';
 import { MatMenuModule } from '@angular/material/menu';
 import { MatSlideToggleModule } from '@angular/material/slide-toggle'; // Fix 1
+import { DragDropModule } from '@angular/cdk/drag-drop';
 
 export const SHARED_MATERIAL = [
     CommonModule,
@@ -34,5 +35,6 @@ export const SHARED_MATERIAL = [
     MatNavList,
     MatToolbarModule,
     MatMenuModule,
-    MatSlideToggleModule 
+    MatSlideToggleModule,
+    DragDropModule,
 ] as const;

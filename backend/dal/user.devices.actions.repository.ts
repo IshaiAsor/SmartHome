@@ -1,7 +1,8 @@
 import db from '../config/db';
-import { UserDeviceAction, DeviceAction } from '@prisma/client';
+import { UserDeviceAction, DeviceAction, UserDevice } from '@prisma/client';
 
 export type UserDeviceActionWithAction = UserDeviceAction & { action: DeviceAction };
+export type UserDeviceActionWithActionAndDevice = UserDeviceAction & { action: DeviceAction; user_device: UserDevice };
 
 class UserDevicesActionsRepository {
 
@@ -17,6 +18,22 @@ class UserDevicesActionsRepository {
       where: { user_device_id: deviceId },
       include: { action: true },
     }) as Promise<UserDeviceActionWithAction[]>;
+  }
+
+  async getAllByUserId(userId: number): Promise<UserDeviceActionWithActionAndDevice[]> {
+    return db.userDeviceAction.findMany({
+      where: { user_device: { user_id: userId } },
+      include: { action: true, user_device: true },
+      orderBy: { sort_order: 'asc' },
+    }) as Promise<UserDeviceActionWithActionAndDevice[]>;
+  }
+
+  async reorderActions(orderedIds: number[]): Promise<void> {
+    await db.$transaction(
+      orderedIds.map((id, index) =>
+        db.userDeviceAction.update({ where: { id }, data: { sort_order: index + 1 } })
+      )
+    );
   }
 
   async insertAction(action: Pick<UserDeviceAction, 'user_device_id' | 'action_id' | 'action_name'> & { current_state?: string | null }) {

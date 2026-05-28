@@ -7,6 +7,7 @@ import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { MatDialog } from '@angular/material/dialog';
 import { MatSnackBar } from '@angular/material/snack-bar';
 import { RenameActionDialogComponent } from '../rename-action-dialog/rename-action-dialog.component';
+import { CdkDragDrop, moveItemInArray } from '@angular/cdk/drag-drop';
 
 @Component({
   selector: 'app-user-dashboard',
@@ -51,6 +52,13 @@ export class UserDashboard implements OnInit {
   onToggle(action: DeviceActionView, event: any) {
     const actionState = event.checked ? 'on' : 'off';
     this.socketService.publishActionState(action.id, actionState);
+  }
+
+  drop(event: CdkDragDrop<DeviceActionView[]>) {
+    moveItemInArray(this.actions, event.previousIndex, event.currentIndex);
+    this.userActionsService
+      .reorderActions(this.actions.map((a) => a.id))
+      .subscribe();
   }
 
   renameAction(action: DeviceActionView) {

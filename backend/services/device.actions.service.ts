@@ -18,24 +18,21 @@ export interface DeviceActionView {
 class DeviceActionsService {
 
   async getUserActions(userId: number): Promise<DeviceActionView[]> {
-    const googleActionTypes = await googleActionTypesRepository.getAll();
-    const userDevices = await userDevicesRepository.getUserDevices(userId);
-    const actionsp = await Promise.all(userDevices.map(async (device: any) => {
-      const actions = await userDevicesActionsRepository.getByDeviceId(device.id);
-      return Promise.all(actions.map<Promise<DeviceActionView>>(async (a: any) => ({
-        id: a.id,
-        name: a.action_name,
-        type: googleActionTypes.find((g: any) => g.id === a.action.google_type_id)?.name,
-        googleType: googleActionTypes.find((g: any) => g.id === a.action.google_type_id),
-        googleTraits: await googleActionsTraitsService.GetActionDefinitionTraits(a.action_id) ,
-        actionName: a.action_name,
-        state: a.current_state,
-        deviceId: a.user_device_id,
-        online: device.online ?? false
-      })));
-    }));
-
-    return actionsp.flat();
+    const [googleActionTypes, actions] = await Promise.all([
+      googleActionTypesRepository.getAll(),
+      userDevicesActionsRepository.getAllByUserId(userId),
+    ]);
+    return Promise.all(actions.map(async (a) => ({
+      id: a.id,
+      name: a.action_name,
+      type: googleActionTypes.find((g) => g.id === a.action.google_type_id)?.name,
+      googleType: googleActionTypes.find((g) => g.id === a.action.google_type_id),
+      googleTraits: await googleActionsTraitsService.GetActionDefinitionTraits(a.action_id),
+      actionName: a.action_name,
+      state: a.current_state,
+      deviceId: a.user_device_id,
+      online: a.user_device?.online ?? false,
+    })));
   }
 
   async getActionView(actionId: number): Promise<DeviceActionView | null> {
@@ -68,6 +65,17 @@ class DeviceActionsService {
     await userDevicesActionsRepository.updateAction(actionId, {
       ...(updates.name !== undefined && { action_name: updates.name }),
     });
+  }
+
+  async reorderActions(userId: number, orderedIds: number[]): Promise<void> {
+    const userActions = await userDevicesActionsRepository.getAllByUserId(userId);
+    const userActionIds = new Set(userActions.map((a) => a.id));
+    if (orderedIds.some((id) => !userActionIds.has(id))) {
+      const err = new Error('Forbidden') as any;
+      err.status = 403;
+      throw err;
+    }
+    await userDevicesActionsRepository.reorderActions(orderedIds);
   }
 
   async deleteAction(userId: number, actionId: number) {
