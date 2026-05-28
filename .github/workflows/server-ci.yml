@@ -8,7 +8,7 @@ on:
       - 'backoffice/**'
       - 'common/**'
       - 'package.json'
-      - 'Dockerfile'
+      - 'Dockerfile.backend'
 
 jobs:
   build-and-push-server:
@@ -44,6 +44,7 @@ jobs:
         uses: docker/build-push-action@v5
         with:
           context: .
+          file: Dockerfile.backend
           platforms: linux/amd64,linux/arm64
           push: true
           tags: |
