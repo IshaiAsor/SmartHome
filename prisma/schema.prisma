@@ -1,0 +1,151 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+  output   = "../backend/node_modules/.prisma/client"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+// Enable the pgcrypto extension for bcrypt hashing (managed via DB but Prisma can see it)
+// Prisma doesn't directly manage extensions in the schema but we'll include it in the migration
+
+model GoogleActionType {
+  id         Int            @id @default(autoincrement())
+  name       String         @db.VarChar(255)
+  value      String         @unique @db.VarChar(255)
+  created_at DateTime?      @default(now()) @db.Timestamp(6)
+  device_action_types      DeviceActionType[]
+
+  @@map("google_action_types")
+}
+
+model GoogleDeviceTrait {
+  id               Int               @id @default(autoincrement())
+  name             String            @db.VarChar(255)
+  value            String            @unique @db.VarChar(255)
+  valid_parameters Json?
+  created_at       DateTime?         @default(now()) @db.Timestamp(6)
+  action_type_traits ActionTypeTrait[]
+
+  @@map("google_device_traits")
+}
+
+model DeviceActionType {
+  id             Int              @id @default(autoincrement())
+  description    String           @db.VarChar(255)
+  google_type_id Int
+  google_type    GoogleActionType @relation(fields: [google_type_id], references: [id], onDelete: Cascade)
+
+  @@map("device_action_types")
+}
+
+model Device {
+  id           Int           @id @default(autoincrement())
+  type         String?       @db.VarChar(255)
+  version      String?       @db.VarChar(255)
+  default_name String        @unique @db.VarChar(255)
+  created_at   DateTime?     @default(now()) @db.Timestamp(6)
+  updated_at   DateTime?     @default(now()) @db.Timestamp(6)
+  device_actions DeviceAction[]
+  user_devices   UserDevice[]
+
+  @@map("devices")
+}
+
+model DeviceAction {
+  id               Int               @id @default(autoincrement())
+  device_id        Int
+  default_name     String            @db.VarChar(255)
+  google_type_id   Int
+  mqtt_action_type String?           @db.VarChar(255)
+  mqtt_action_name String?           @db.VarChar(255)
+  device           Device            @relation(fields: [device_id], references: [id], onDelete: Cascade)
+  action_type_traits ActionTypeTrait[]
+  user_device_actions UserDeviceAction[]
+
+  @@unique([device_id, default_name])
+  @@map("device_actions")
+}
+
+model ActionTypeTrait {
+  id                     Int          @id @default(autoincrement())
+  device_action_type_id  Int
+  google_trait_id        Int
+  device_action          DeviceAction @relation(fields: [device_action_type_id], references: [id], onDelete: Cascade)
+  google_trait           GoogleDeviceTrait @relation(fields: [google_trait_id], references: [id], onDelete: Cascade)
+
+  @@map("action_type_traits")
+}
+
+model User {
+  id                  Int               @id @default(autoincrement())
+  user_type           Int               @default(0)
+  user_role           String            @default("user") @db.VarChar(50)
+  user_name           String?           @unique @db.VarChar(255)
+  password            String?           @db.VarChar(255)
+  google_id           String?           @unique @db.VarChar(255)
+  email               String            @unique @db.VarChar(255)
+  full_name           String?           @db.VarChar(255)
+  profile_picture_url String?
+  created_at          DateTime?         @default(now()) @db.Timestamptz(6)
+  updated_at          DateTime?         @default(now()) @db.Timestamptz(6)
+  user_devices        UserDevice[]
+  user_login_audit    UserLoginAudit[]
+
+  @@map("users")
+}
+
+model UserDevice {
+  id                 Int                @id @default(autoincrement())
+  device_type_id     Int
+  user_id            Int
+  mac_id             String             @unique @db.VarChar(255)
+  name               String             @db.VarChar(255)
+  online             Boolean?           @default(false)
+  last_online_date   DateTime?          @default(now()) @db.Timestamp(6)
+  created_at         DateTime?          @default(now()) @db.Timestamp(6)
+  updated_at         DateTime?          @default(now()) @db.Timestamp(6)
+  device             Device             @relation(fields: [device_type_id], references: [id], onDelete: Cascade)
+  user               User               @relation(fields: [user_id], references: [id], onDelete: Cascade)
+  user_device_actions UserDeviceAction[]
+
+  @@map("user_devices")
+}
+
+model UserDeviceAction {
+  id             Int        @id @default(autoincrement())
+  user_device_id Int
+  action_id      Int
+  action_name    String     @db.VarChar(255)
+  current_state  String?    @db.VarChar(255)
+  created_at     DateTime?  @default(now()) @db.Timestamp(6)
+  updated_at     DateTime?  @default(now()) @db.Timestamp(6)
+  user_device    UserDevice @relation(fields: [user_device_id], references: [id], onDelete: Cascade)
+  action         DeviceAction @relation(fields: [action_id], references: [id], onDelete: Cascade)
+
+  @@map("user_device_actions")
+}
+
+model UserLoginAudit {
+  id         Int       @id @default(autoincrement())
+  user_id    Int
+  login_at   DateTime? @default(now()) @db.Timestamptz(6)
+  ip_address String?   @db.VarChar(100)
+  user       User      @relation(fields: [user_id], references: [id], onDelete: Cascade)
+
+  @@map("user_login_audit")
+}
+
+model MqttUser {
+  id            Int       @id @default(autoincrement())
+  username      String    @unique @db.VarChar(100)
+  password_hash String    @db.VarChar(100)
+  is_superuser  Boolean?  @default(false)
+  created_at    DateTime? @default(now()) @db.Timestamp(6)
+
+  @@map("mqtt_user")
+}

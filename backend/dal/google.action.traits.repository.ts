@@ -1,26 +1,15 @@
 import db from '../config/db';
+import { GoogleDeviceTrait } from '@prisma/client';
 
-interface GoogleTraitTypeEntity {
-  id: number;
-  name: string;
-  value: string;
-  valid_parameters: string[];
-  created_at: Date;
-}
+export type GoogleTraitTypeEntity = GoogleDeviceTrait;
 
 class GoogleTraitsRepository {
-  async getById(traitId: number):Promise<GoogleTraitTypeEntity|null> {
-    let result = await db.query<GoogleTraitTypeEntity>('SELECT * FROM google_device_traits WHERE id = $1', [traitId]);
-
-    if (result.rows.length === 0)
-      return null;
-    else
-      return result.rows[0];
+  async getById(traitId: number): Promise<GoogleTraitTypeEntity | null> {
+    return db.googleDeviceTrait.findUnique({ where: { id: traitId } });
   }
 
-  async getAll():Promise<GoogleTraitTypeEntity[]|null> {
-    const result = await db.query<GoogleTraitTypeEntity>('SELECT * FROM google_device_traits');
-    return result.rows;
+  async getAll(): Promise<GoogleTraitTypeEntity[]> {
+    return db.googleDeviceTrait.findMany();
   }
 }
 

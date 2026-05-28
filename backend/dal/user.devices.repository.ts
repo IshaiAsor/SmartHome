@@ -1,99 +1,79 @@
 import db from '../config/db';
+import { UserDevice, Device } from '@prisma/client';
 
-interface UserDeviceEntity {
-  id: number;
-  device_type_id: number;
-  user_id: number;
-  mac_id: string;
-  name: string;
-  online: boolean;
-  last_online_date:Date;
-  type: string;
-  version: string;
-  created_at: Date;
-  updated_at: Date;
-}
+export type UserDeviceWithDevice = UserDevice & {
+  device: Device;
+};
 
 class UserDevicesRepository {
 
-  async getUserDevices(userId: number) {
-    const result = await db.query<UserDeviceEntity>(
-      'SELECT ud.* FROM user_devices ud , devices dt WHERE ud.device_type_id = dt.id AND user_id = $1'
-      , [userId]);
-    return result.rows;
+  async getUserDevices(userId: number): Promise<UserDeviceWithDevice[]> {
+    return await db.userDevice.findMany({
+      where: { user_id: userId },
+      include: { device: true }
+    }) as UserDeviceWithDevice[];
   }
 
-  async getByMacId(id: string) {
-    const result = await db.query<UserDeviceEntity>(
-      'SELECT ud.* FROM user_devices ud , devices dt WHERE ud.device_type_id = dt.id AND  mac_id = $1', [id]);
-    if (result.rows.length === 0) {
+  async getByMacId(macId: string): Promise<UserDeviceWithDevice> {
+    const device = await db.userDevice.findUnique({
+      where: { mac_id: macId },
+      include: { device: true }
+    });
+    if (!device) {
       throw new Error('Device not found');
     }
-    return result.rows[0];
+    return device as UserDeviceWithDevice;
   }
 
-  async getById(id: number) {
-    const result = await db.query<UserDeviceEntity>(
-      'SELECT ud.* FROM user_devices ud , devices dt WHERE ud.device_type_id = dt.id AND  ud.id = $1', [id]);
-    if (result.rows.length === 0) {
+  async getById(id: number): Promise<UserDeviceWithDevice> {
+    const device = await db.userDevice.findUnique({
+      where: { id },
+      include: { device: true }
+    });
+    if (!device) {
       throw new Error('Device not found');
     }
-    return result.rows[0];
+    return device as UserDeviceWithDevice;
   }
 
   async updateDeviceOnlineStatus(userId: number, id: number, deviceOnlineStatus: boolean) {
-    const result = await db.query<UserDeviceEntity>(
-      'UPDATE user_devices SET online = $1, last_online_date = CURRENT_TIMESTAMP WHERE id = $2 AND user_id = $3 RETURNING *',
-      [deviceOnlineStatus, id, userId],
-    );
-    if (result.rows.length === 0) {
-      throw new Error('Device not found');
-    }
-    return result.rows[0];
+    return await db.userDevice.update({
+      where: { id, user_id: userId },
+      data: {
+        online: deviceOnlineStatus,
+        last_online_date: new Date()
+      }
+    });
   }
 
-
-  async insertDevice(device: Partial<UserDeviceEntity>) : Promise<UserDeviceEntity> {
-    const result = await db.query<UserDeviceEntity>(
-      'INSERT INTO user_devices (device_type_id,user_id,mac_id,name) VALUES ($1, $2, $3,$4) RETURNING *',
-      [device.device_type_id,device.user_id, device.mac_id,device.name],
-    );
-    return result.rows[0];
+  async insertDevice(device: any): Promise<UserDevice> {
+    return await db.userDevice.create({
+      data: {
+        device_type_id: device.device_type_id,
+        user_id: device.user_id,
+        mac_id: device.mac_id,
+        name: device.name,
+        online: false
+      }
+    });
   }
 
   async deleteDevice(id: number, userId: number) {
-    const result = await db.query(
-      'DELETE FROM user_devices WHERE id = $1 AND user_id = $2 RETURNING *',
-      [id, userId],
-    );
-    if (result.rows.length === 0) {
-      throw new Error('Device not found');
-    }
-    return result.rows[0];
+    return await db.userDevice.delete({
+      where: { id, user_id: userId }
+    });
   }
 
-  async updateDevice(userId: number, id: number, updates: Partial<UserDeviceEntity>) {
-    const fields = [];
-    const values = [];
-    let index = 3;
-    values.push(id);
-    values.push(userId);
-
-    for (const key in updates) {
-      fields.push(`${key} = $${index}`);
-      values.push((updates as any)[key]);
-      index++;
-    }
-    
-    let query = `UPDATE user_devices SET ${fields.join(', ')}, updated_at = CURRENT_TIMESTAMP WHERE id = $1 AND user_id = $2 RETURNING *`; 
-    const result = await db.query<UserDeviceEntity>(
-      query,
-      values,
-    );
-    if (result.rows.length === 0) {
-      throw new Error('Device not found');
-    }
-    return result.rows[0];
+  async updateDevice(userId: number, id: number, updates: any) {
+    // Filter out fields that are not in the database if necessary
+    const { id: _, user_id: __, device: ___, ...data } = updates;
+    return await db.userDevice.update({
+      where: { id, user_id: userId },
+      data: {
+        ...data,
+        updated_at: new Date()
+      }
+    });
   }
 }
 

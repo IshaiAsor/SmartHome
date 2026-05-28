@@ -6,6 +6,7 @@ backoffice/node_modules
 backoffice/dist
 backend/node_modules
 backend/dist
+prisma/node_modules
 Dockerfile
 .dockerignore
 .github

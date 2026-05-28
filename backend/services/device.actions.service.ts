@@ -20,18 +20,18 @@ class DeviceActionsService {
   async getUserActions(userId: number): Promise<DeviceActionView[]> {
     const googleActionTypes = await googleActionTypesRepository.getAll();
     const userDevices = await userDevicesRepository.getUserDevices(userId);
-    const actionsp = await Promise.all(userDevices.map(async (device) => {
+    const actionsp = await Promise.all(userDevices.map(async (device: any) => {
       const actions = await userDevicesActionsRepository.getByDeviceId(device.id);
-      return Promise.all(actions.map<Promise<DeviceActionView>>(async (a) => ({
+      return Promise.all(actions.map<Promise<DeviceActionView>>(async (a: any) => ({
         id: a.id,
         name: a.action_name,
-        type: googleActionTypes.find((g) => g.id === a.google_type_id)?.name,
-        googleType: googleActionTypes.find((g) => g.id === a.google_type_id),
+        type: googleActionTypes.find((g: any) => g.id === a.action.google_type_id)?.name,
+        googleType: googleActionTypes.find((g: any) => g.id === a.action.google_type_id),
         googleTraits: await googleActionsTraitsService.GetActionDefinitionTraits(a.action_id) ,
         actionName: a.action_name,
         state: a.current_state,
         deviceId: a.user_device_id,
-        online: device.online
+        online: device.online ?? false
       })));
     }));
 
@@ -48,7 +48,7 @@ class DeviceActionsService {
       return null;
     }
     const googleActionTypes = await googleActionTypesRepository.getAll();
-    const googleActionType = googleActionTypes.find(t => t.id === action.google_type_id);
+    const googleActionType = googleActionTypes.find(t => t.id === action.action.google_type_id);
     const googleTraits = await googleActionsTraitsService.GetActionDefinitionTraits(action.action_id);
 
     return {
@@ -60,7 +60,7 @@ class DeviceActionsService {
       actionName: action.action_name,
       state: action.current_state,
       deviceId: action.user_device_id,
-      online: device.online
+      online: device.online ?? false
     };
   }
 

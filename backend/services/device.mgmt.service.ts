@@ -46,16 +46,16 @@ class DeviceMgmtService {
   }
 
   async getUserDevices(userId: number): Promise<DeviceView[]> {
-    var devices = await userDevicesRepository.getUserDevices(userId);
+    const devices = await userDevicesRepository.getUserDevices(userId);
 
-    return devices.map((device) => {
+    return devices.map((device: any) => {
       return {
         id: device.id,
         deviceName: device.name,
-        online: device.online,
-        lastOnlineDate: device.last_online_date,
-        type: device.type,
-        version: device.version,
+        online: device.online || false,
+        lastOnlineDate: device.last_online_date || undefined,
+        type: device.device.type || '',
+        version: device.device.version || '',
       };
     });
   }

@@ -1,27 +1,35 @@
 {
-	"folders": [
-		{
-			"name": "ESP32 Firmware",
-			"path": "ESP32Code"
-		},
-		{
-			"name": "Project Root",
-			"path": "."
-		},
-		{
-			"name": "Backend API",
-			"path": "backend"
-		},
-		{
-			"name": "Backoffice UI",
-			"path": "backoffice"
-		}
-	],
-	"settings": {
-		"files.exclude": {
-			"backend": true,
-			"backoffice": true,
-			"ESP32Code": true
-		}
-	}
+  "folders": [
+    {
+      "name": "ESP32 Firmware",
+      "path": "ESP32Code",
+    },
+    {
+      "name": "GITOPS",
+      "path": "../oci-k3s-gitops",
+    },
+    {
+      "name": "Project Root",
+      "path": ".",
+    },
+    {
+      "name": "Backend API",
+      "path": "backend",
+    },
+    {
+      "name": "Backoffice UI",
+      "path": "backoffice",
+    },
+    {
+      "name": "Prisma",
+      "path": "prisma",
+    },
+  ],
+  "settings": {
+    "files.exclude": {
+      "backend": true,
+      "backoffice": true,
+      "ESP32Code": true,
+    },
+  },
 }

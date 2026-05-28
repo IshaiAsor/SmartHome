@@ -71,6 +71,25 @@ app.use('/download', express.static(firmwarePath));
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
+// Parses "V1.2.3" → [1, 2, 3]. Returns null on bad format.
+function parseSemver(v) {
+    const s = (v || '').replace(/^[Vv]/, '');
+    const parts = s.split('.').map(Number);
+    if (parts.length !== 3 || parts.some(isNaN)) return null;
+    return parts;
+}
+
+// Returns true when a > b (strictly higher version).
+function isHigherVersion(a, b) {
+    const pa = parseSemver(a);
+    const pb = parseSemver(b);
+    if (!pa || !pb) return false;
+    for (let i = 0; i < 3; i++) {
+        if (pa[i] !== pb[i]) return pa[i] > pb[i];
+    }
+    return false; // equal
+}
+
 // 2. Metadata check
 app.get('/check', (req, res) => {
     const { deviceType } = req.query;
@@ -95,6 +114,20 @@ app.post('/release', upload.single('firmware'), (req, res) => {
     if (!req.file || !deviceType || !version) {
         console.error('❌ Missing required fields in release request');
         return res.status(400).send('Missing file, deviceType, or version');
+    }
+
+    if (!parseSemver(version)) {
+        return res.status(400).send(`Invalid version format "${version}" — expected Vmajor.minor.patch`);
+    }
+
+    // Reject if the uploaded version is not strictly higher than what's already published.
+    const metaPathCheck = path.join(firmwarePath, deviceType, 'latest.json');
+    if (fs.existsSync(metaPathCheck)) {
+        const existing = JSON.parse(fs.readFileSync(metaPathCheck, 'utf8'));
+        if (!isHigherVersion(version, existing.version)) {
+            console.warn(`⚠️  Rejected release: ${version} is not higher than current ${existing.version}`);
+            return res.status(409).send(`Version ${version} is not higher than current release ${existing.version}`);
+        }
     }
 
     const downloadUrl = `https://${req.get('host')}/download/${deviceType}/${version}.bin`;

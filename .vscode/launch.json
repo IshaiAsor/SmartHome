@@ -27,6 +27,23 @@
     {
         "type": "node",
         "request": "launch",
+        "name": "Debug DB Seed (ts-node)",
+        "runtimeArgs": [
+            "-r",
+            "ts-node/register"
+        ],
+        "program": "${workspaceFolder:Prisma}/seed.ts",
+        "cwd": "${workspaceFolder:Prisma}",
+        "outFiles": ["${workspaceFolder:Prisma}/**/*.js"],
+        "envFile": "${workspaceFolder:Project Root}/.env",
+        "env": {
+            "TS_NODE_PROJECT": "${workspaceFolder:Prisma}/tsconfig.json"
+        },
+        "skipFiles": ["<node_internals>/**"]
+    },
+    {
+        "type": "node",
+        "request": "launch",
         "name": "Debug Backend (ts-node)",
         "runtimeArgs": [
             "-r",
@@ -83,7 +100,7 @@
     ],    "compounds": [
     {
         "name": "Full Stack Debug (ts-node)",
-        "configurations": ["Debug Backend (ts-node)", "Debug Backoffice (Chrome)"]
+        "configurations": ["Debug Backend (ts-node)", "Debug FrontEnd (Chrome)"]
     }
     ]
 }

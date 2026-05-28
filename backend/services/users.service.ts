@@ -5,6 +5,9 @@ export class UsersService {
   async GetUserInfo(userId: any) {
 
     const user = await usersRepository.getById(userId);
+    if (!user) {
+      throw new Error('User not found');
+    }
     return {
       username: user.full_name,
       email: user.email,

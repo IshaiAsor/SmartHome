@@ -41,37 +41,40 @@ public:
         return client->connected();
     }
 
-     bool testMqtt(MqttCredentials *creds, JwtToken *token)
+    bool testMqtt(MqttCredentials *creds, JwtToken *token)
     {
+        WiFiClientSecure testClient;
         Serial.println("Attempting to connect to MQTT... ");
         if (!creds->validateCACert)
         {
-            espClient.setInsecure();
+            testClient.setInsecure();
         }
         else
         {
-            espClient.setCACert(root_ca);
+            testClient.setCACert(root_ca);
         }
+        testClient.setHandshakeTimeout(10000);
+        PubSubClient testPubSubClient(testClient);
+        testPubSubClient.setBufferSize(2048);
+        testPubSubClient.setKeepAlive(10);
+        testPubSubClient.setServer(creds->server.c_str(), creds->port);
 
-        client->setServer(creds->server.c_str(), creds->port);
 
-        
         int attempt = 0;
         const int max_attempts = 5;
-        client->setCallback(MqttActionsHandlerService::callback);
 
-        while (!client->connected() && attempt < max_attempts)
+        while (!testPubSubClient.connected() && attempt < max_attempts)
         {
-            if (client->connect(creds->clientId.c_str(), creds->userId.c_str(), token->token.c_str()))
+            if (testPubSubClient.connect(creds->clientId.c_str(), creds->userId.c_str(), token->token.c_str()))
             {
                 Serial.println("connected");
             }
             else
             {
                 Serial.print("failed, rc=");
-                Serial.print(client->state());
+                Serial.print(testPubSubClient.state());
                 char err_buf[100];
-                espClient.lastError(err_buf, 100);
+                testClient.lastError(err_buf, 100);
                 Serial.print(" | SSL Error: ");
                 Serial.println(err_buf);
                 Serial.println(" try again in 5 seconds");
@@ -80,7 +83,7 @@ public:
             }
         }
 
-        if (!client->connected())
+        if (!testPubSubClient.connected())
         {
             Serial.println("Max MQTT connection attempts reached. Clearing credentials and restarting...");
 
@@ -88,7 +91,6 @@ public:
         }
         return true;
     }
-
 
     bool reconnectMqtt()
     {
@@ -140,7 +142,7 @@ public:
 
         String otaTopicStr = String(OTA_TOPIC);
         otaTopicStr.replace("%{devicetype}", DEVICE_TYPE);
-        
+
         int attempt = 0;
         const int max_attempts = 5;
 
@@ -213,6 +215,7 @@ public:
                 prefService.ClearCredentials();
                 return false;
             }
+            return true;
         }
         return false;
     }

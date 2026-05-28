@@ -32,7 +32,7 @@ services:
       - EMQX_AUTHENTICATION__2__MECHANISM=password_based
       - EMQX_AUTHENTICATION__2__BACKEND=postgresql
       - EMQX_AUTHENTICATION__2__SERVER=${EMQX_DB_SERVER}
-      - EMQX_AUTHENTICATION__2__DATABASE=postgres
+      - EMQX_AUTHENTICATION__2__DATABASE=${DB_NAME:-emqx_data}
       - EMQX_AUTHENTICATION__2__USERNAME=${EMQX_DB_USERNAME}
       - EMQX_AUTHENTICATION__2__PASSWORD=${EMQX_DB_PASSWORD}
       - EMQX_AUTHENTICATION__2__QUERY=SELECT password_hash, is_superuser FROM mqtt_user WHERE username = $${username} LIMIT 1
@@ -73,7 +73,7 @@ services:
       - /etc/localtime:/etc/localtime:ro
       - /etc/timezone:/etc/timezone:ro
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U postgres -d ${DB_NAME:-emqx_data}"]
+      test: ['CMD-SHELL', 'pg_isready -U postgres -d ${DB_NAME:-emqx_data}']
       interval: 5s
       timeout: 5s
       retries: 5
@@ -88,45 +88,23 @@ services:
     deploy:
       resources:
         limits:
-          cpus: '0.10' # Equivalent to cpu: 100m
-          memory: 64M # Equivalent to memory: 64Mi
+          cpus: '0.10'
+          memory: 64M
     restart: always
     depends_on:
       postgres:
         condition: service_healthy
 
-  # Atlas Migration Tool (Local)
-  atlas:
-    image: arigaio/atlas:latest
-    container_name: atlas_migrate
-    volumes:
-      - ./migrations:/migrations
-    command: >
-      migrate apply
-      --url "postgres://postgres:${DB_PASSWORD}@postgres:5432/${DB_NAME:-emqx_data}?sslmode=disable"
-      --dir "file://migrations"
-      --allow-dirty
-    depends_on:
-      postgres:
-        condition: service_healthy
-
-  # Utility to update atlas.sum (Run with: docker-compose run atlas-hash)
-  atlas-hash:
-    image: arigaio/atlas:latest
-    container_name: atlas_hash
-    volumes:
-      - ./migrations:/migrations
-    command: migrate hash --dir "file://migrations"
-
+  # Redis Cache
   cache:
     image: redis:7-alpine
     container_name: redis_cache
     command: >
-     redis-server 
-     --maxmemory 256mb 
-     --maxmemory-policy volatile-lru 
-     --appendonly yes
-     --user ${REDIS_USER} on ">${REDIS_PASSWORD}" ~* +@all
+      redis-server
+      --maxmemory 256mb
+      --maxmemory-policy volatile-lru
+      --appendonly yes
+      --user ${REDIS_USER} on ">${REDIS_PASSWORD}" ~* +@all
     ports:
       - '6379:6379'
     volumes:
@@ -153,6 +131,35 @@ services:
     depends_on:
       - emqx
     restart: always
+
+  # Prisma migrations — run once on first setup or after schema changes:
+  #   docker compose run --rm migrate
+  migrate:
+    build:
+      context: ./prisma
+      dockerfile: Dockerfile
+    environment:
+      - DATABASE_URL=postgresql://postgres:${DB_PASSWORD}@postgres:5432/${DB_NAME:-emqx_data}?sslmode=disable
+      - MQTT_APP_USERNAME=${MQTT_APP_USERNAME}
+      - MQTT_APP_PASSWORD=${MQTT_APP_PASSWORD}
+      - OWNER_EMAIL=${OWNER_EMAIL}
+      - OWNER_PASSWORD=${OWNER_PASSWORD}
+      - OWNER_USERNAME=${OWNER_USERNAME}
+    depends_on:
+      postgres:
+        condition: service_healthy
+    profiles:
+      - migrate
+
+  # Regenerate Prisma client after schema changes (run from host, not inside Docker):
+  #   docker compose run --rm generate
+  generate:
+    build:
+      context: ./prisma
+      dockerfile: Dockerfile
+    command: npx prisma generate
+    profiles:
+      - generate
 
 volumes:
   emqx-data:

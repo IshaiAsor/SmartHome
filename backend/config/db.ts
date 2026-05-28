@@ -1,4 +1,6 @@
-import { Pool, QueryResult, QueryResultRow } from 'pg';
+import { PrismaClient } from '@prisma/client';
+import { PrismaPg } from '@prisma/adapter-pg';
+import { Pool } from 'pg';
 import config from './env.config';
 
 const pool = new Pool({
@@ -8,9 +10,6 @@ const pool = new Pool({
   database: config.db.database,
   port: config.db.port,
 });
+const adapter = new PrismaPg(pool);
 
-function query<T extends QueryResultRow = any>(text: string, params?: any[]): Promise<QueryResult<T>> {
-  return pool.query<T>(text, params);
-}
-
-export default { query };
+export default new PrismaClient({ adapter });

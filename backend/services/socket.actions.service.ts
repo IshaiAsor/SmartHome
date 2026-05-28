@@ -15,7 +15,7 @@ class SocketActionsService {
     }
 
     await userDevicesActionsRepository.updateState(actionId, state);
-    mqttService.publishActionState(userId, userDevice.id, userAction.mqtt_action_type, userAction.mqtt_action_name, state);
+    mqttService.publishActionState(userId, userDevice.id, userAction.action.mqtt_action_type ?? '', userAction.action.mqtt_action_name ?? '', state);
     socketService.publishActionStateUpdate(userId, actionId, state);
   }
 

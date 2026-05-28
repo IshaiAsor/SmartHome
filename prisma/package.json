@@ -1,0 +1,23 @@
+{
+  "name": "iot-smart-home-prisma",
+  "version": "1.0.0",
+  "prisma": {
+    "seed": "ts-node seed.ts"
+  },
+  "scripts": {
+    "migrate:deploy": "npx prisma migrate deploy",
+    "seed": "npx prisma db seed"
+  },
+  "devDependencies": {
+    "prisma": "^7.8.0",
+    "ts-node": "^10.9.2",
+    "typescript": "^5.9.3",
+    "@types/node": "^20.0.0",
+    "@types/bcrypt": "^5.0.2",
+    "@types/pg": "^8.0.0"
+  },
+  "dependencies": {
+    "pg": "^8.0.0",
+    "bcrypt": "^5.1.1"
+  }
+}

@@ -1,16 +1,11 @@
 import db from '../config/db';
+import { GoogleActionType } from '@prisma/client';
 
-export interface GoogleActionTypeEntity {
-  id: number;
-  name: string;
-  value: string;
-  created_at: Date;
-}
+export type GoogleActionTypeEntity = GoogleActionType;
 
 class GoogleActionTypesRepository {
-  async getAll() {
-    const result = await db.query<GoogleActionTypeEntity>('SELECT * FROM google_action_types');
-    return result.rows;
+  async getAll(): Promise<GoogleActionTypeEntity[]> {
+    return db.googleActionType.findMany();
   }
 }
 

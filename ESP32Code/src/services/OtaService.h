@@ -9,7 +9,7 @@
 
 class OtaService {
 public:
-    OtaService(const char* currentVersion, const char* deviceType, const char* rootCa) 
+    OtaService(const char* currentVersion, const char* deviceType, const char* rootCa)
         : _currentVersion(currentVersion), _deviceType(deviceType), _rootCa(rootCa) {}
 
     void handleUpdateMessage(const char* payload) {
@@ -30,14 +30,12 @@ public:
             return;
         }
 
-        if (strcmp(newVersion, _currentVersion) == 0) {
-            Serial.print("OTA: Device is already on version ");
-            Serial.println(_currentVersion);
+        if (!isNewerVersion(newVersion, _currentVersion)) {
+            Serial.printf("OTA: Skipping — current=%s, received=%s\n", _currentVersion, newVersion);
             return;
         }
 
-        Serial.print("OTA: New version available: ");
-        Serial.println(newVersion);
+        Serial.printf("OTA: Upgrading %s → %s\n", _currentVersion, newVersion);
         Serial.print("OTA: Downloading from: ");
         Serial.println(downloadUrl);
 
@@ -48,6 +46,21 @@ private:
     const char* _currentVersion;
     const char* _deviceType;
     const char* _rootCa;
+
+    // Returns true only when newVer is strictly greater than curVer (semver "Vmajor.minor.patch").
+    // Rejects downgrades and same-version re-flashes.
+    static bool isNewerVersion(const char* newVer, const char* curVer) {
+        int nMaj = 0, nMin = 0, nPat = 0;
+        int cMaj = 0, cMin = 0, cPat = 0;
+        // Accept optional leading 'V' or 'v'
+        const char* n = (*newVer == 'V' || *newVer == 'v') ? newVer + 1 : newVer;
+        const char* c = (*curVer  == 'V' || *curVer  == 'v') ? curVer  + 1 : curVer;
+        if (sscanf(n, "%d.%d.%d", &nMaj, &nMin, &nPat) != 3) return false;
+        if (sscanf(c, "%d.%d.%d", &cMaj, &cMin, &cPat) != 3) return false;
+        if (nMaj != cMaj) return nMaj > cMaj;
+        if (nMin != cMin) return nMin > cMin;
+        return nPat > cPat;
+    }
 
     void performUpdate(const char* url) {
         WiFiClientSecure client;
