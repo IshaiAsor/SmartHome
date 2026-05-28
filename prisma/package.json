@@ -13,11 +13,11 @@
     "ts-node": "^10.9.2",
     "typescript": "^5.9.3",
     "@types/node": "^20.0.0",
-    "@types/bcrypt": "^5.0.2",
+    "@types/bcryptjs": "^2.4.6",
     "@types/pg": "^8.0.0"
   },
   "dependencies": {
     "pg": "^8.0.0",
-    "bcrypt": "^5.1.1"
+    "bcryptjs": "^2.4.3"
   }
 }
