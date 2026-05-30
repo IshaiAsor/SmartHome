@@ -18,6 +18,9 @@ COPY prisma/ ./
 
 WORKDIR /app/backend
 COPY backend/package*.json ./
+# Skip Prisma's postinstall (prisma generate) to avoid QEMU SIGILL on ARM64;
+# prisma generate is already invoked by `npm run build` in the next step.
+ENV PRISMA_SKIP_POSTINSTALL_GENERATE=true
 RUN npm install && \
     ln -sf /app/backend/node_modules/@prisma/client /app/prisma/node_modules/@prisma/client
 COPY backend/ ./

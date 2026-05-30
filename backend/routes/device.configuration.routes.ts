@@ -17,7 +17,7 @@ router.get('/:version/configuration', verifyToken(JwtPurpose.device_usage), asyn
   if (!userDeviceId) {
     return res.status(400).json({ error: 'Missing deviceId in token' });
   }
-  if (!version) {
+  if (!version || version == 'undefined') {
     return res.status(400).json({ error: 'Missing version in URL' });
   }
 

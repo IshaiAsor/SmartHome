@@ -17,6 +17,7 @@
                     @case ('action.devices.types.OUTLET') { outlet }
                     @case ('action.devices.types.SENSOR') { thermometer }
                     @case ('action.devices.types.FAN') { toys_fan }
+                    @case ('action.devices.types.LIGHT') { light_mode }
                     @default { device_unknown } }
                 </span>
                 <span class="card-name">{{ action.name }}</span>
@@ -45,36 +46,25 @@
                 <div class="control-onoff">
                     <button class="power-btn" [class.on]="action.state === 'on'"
                         (click)="changeActionState(action, action.state === 'on' ? 'off' : 'on')"
-                        [disabled]="action.state === 0"
-                        [matTooltip]="action.state === 'on' ? 'Turn off' : 'Turn on'">
+                        [disabled]="action.state === 0" [matTooltip]="action.state === 'on' ? 'Turn off' : 'Turn on'">
                         <mat-icon>power_settings_new</mat-icon>
                     </button>
                 </div>
                 }
-                @if (action.googleTraits.some(trait => trait.value === 'action.devices.traits.FanSpeed')) {
-                <svg class="speed-dial" viewBox="-8 -8 136 110"
-                    (pointerdown)="onDialPointerDown($event, action)"
+                @if (action.googleTraits.some(trait => trait.value === 'action.devices.traits.FanSpeed' || trait.value
+                === 'action.devices.traits.Brightness')) {
+                <svg class="speed-dial" viewBox="-8 -8 136 96" (pointerdown)="onDialPointerDown($event, action)"
                     (pointermove)="onDialPointerMove($event, action)">
                     <path class="dial-track" [attr.d]="dialTrackPath()" />
-                    <path class="dial-active" [attr.d]="dialActivePath(action.state === 'on'? 100 : action.state === 'off'? 0: $any(action.state) || 0)" />
-                    <circle class="dial-thumb"
-                        [attr.cx]="dialThumbPt(action.state === 'on'? 100 : action.state === 'off'? 0: $any(action.state) || 0).x"
-                        [attr.cy]="dialThumbPt(action.state === 'on'? 100 : action.state === 'off'? 0: $any(action.state) || 0).y" r="7" />
-                    <text x="60" y="50" text-anchor="middle" dominant-baseline="middle" class="dial-value">{{ action.state === 'on'? 100 : action.state === 'off'? 0: $any(action.state) || 0 }}</text>
-                    <text x="60" y="64" text-anchor="middle" class="dial-unit">% speed</text>
-                </svg>
-                }
-                @if (action.googleTraits.some(trait => trait.value === 'action.devices.traits.Brightness')) {
-                <svg class="speed-dial" viewBox="-8 -8 136 110"
-                    (pointerdown)="onDialPointerDown($event, action)"
-                    (pointermove)="onDialPointerMove($event, action)">
-                    <path class="dial-track" [attr.d]="dialTrackPath()" />
-                    <path class="dial-active" [attr.d]="dialActivePath(action.state === 'on'? 100 : action.state === 'off'? 0: $any(action.state) || 0)" />
-                    <circle class="dial-thumb"
-                        [attr.cx]="dialThumbPt(action.state === 'on'? 100 : action.state === 'off'? 0: $any(action.state) || 0).x"
-                        [attr.cy]="dialThumbPt(action.state === 'on'? 100 : action.state === 'off'? 0: $any(action.state) || 0).y" r="7" />
-                    <text x="60" y="50" text-anchor="middle" dominant-baseline="middle" class="dial-value">{{ action.state === 'on'? 100 : action.state === 'off'? 0: $any(action.state) || 0 }}</text>
-                    <text x="60" y="64" text-anchor="middle" class="dial-unit">% brightness</text>
+                    <path class="dial-active" [attr.d]="dialActivePath($any(action.state) || 0)" />
+                    <circle class="dial-thumb" [attr.cx]="dialThumbPt($any(action.state) || 0).x"
+                        [attr.cy]="dialThumbPt($any(action.state) || 0).y" r="7" />
+                    <text x="60" y="48" text-anchor="middle" dominant-baseline="middle" class="dial-value">{{
+                        $any(action.state) || 0 }}<tspan font-size="11" fill="#9e9e9e" dy="-3">%</tspan></text>
+                    <text x="60" y="62" text-anchor="middle" class="dial-unit">
+                        {{ action.googleTraits.some(t => t.value === 'action.devices.traits.Brightness') ? 'brightness'
+                        : 'speed' }}
+                    </text>
                 </svg>
                 }
                 @if (action.googleType?.value === 'action.devices.types.SENSOR') {
