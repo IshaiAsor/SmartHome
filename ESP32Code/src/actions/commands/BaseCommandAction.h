@@ -2,6 +2,7 @@
 #include <vector>
 #include <string>
 #include <Arduino.h>
+#include <ArduinoJson.h>
 #include "services/PreferencesManagerService.h"
 #include <actions/ActionPinsSetup.h>
 
@@ -12,14 +13,18 @@ protected:
     int  rangeMin = 0;
     int  rangeMax = 0;
 
+    int32_t       _durationMs     = -1;
+    unsigned long _durationStart  = 0;
+    bool          _durationActive = false;
+
+    String state;
+
     bool validateActionPayload(String action)
     {
         for (int i = 0; i < validParameters.size(); i++)
         {
             if (strcmp(action.c_str(), validParameters[i].c_str()) == 0)
-            {
                 return true;
-            }
         }
         if (hasRange)
         {
@@ -42,13 +47,37 @@ protected:
         return false;
     }
 
+    // Validates, executes, saves state, and arms the duration timer.
+    void applyAction(String action, int32_t durationMs = -1)
+    {
+        if (validateActionPayload(action))
+        {
+            Serial.println("Executing valid action: " + action);
+            executeValidAction(action);
+            state = action;
+            prefService.SaveActionState((char *)actionName.c_str(), (char *)action.c_str());
+            if (durationMs > 0)
+            {
+                _durationMs    = durationMs;
+                _durationStart = millis();
+                _durationActive = true;
+            }
+            else
+            {
+                _durationActive = false;
+            }
+        }
+        else
+        {
+            Serial.println("Invalid parameter: " + action);
+        }
+    }
+
     virtual void loadState()
     {
         String lastState = prefService.LoadActionState((char *)actionName.c_str());
         if (lastState != nullptr)
-        {
-            execute(lastState);
-        }
+            applyAction(lastState);
     }
 
     virtual void executeValidAction(String action) = 0;
@@ -80,9 +109,18 @@ public:
     }
 
     virtual ~BaseCommandAction() {}
-    virtual void loop() {}
 
-public:
+    // Fires auto-off when the duration timer expires.
+    virtual void loop()
+    {
+        if (_durationActive &&
+            (millis() - _durationStart) >= (unsigned long)_durationMs)
+        {
+            _durationActive = false;
+            applyAction("off");
+        }
+    }
+
     virtual void initPins()
     {
         for (int i = 0; i < actionPinsSetup.size(); i++)
@@ -92,21 +130,28 @@ public:
         }
     }
 
-    virtual void execute(String action)
+    // Parses JSON payload {"value":"on","duration":30} sent from the backend.
+    // Duration "*" or absent means no auto-off. Falls back to plain string for internal calls.
+    virtual void execute(String payload)
     {
-        if (validateActionPayload(action))
+        JsonDocument doc;
+        DeserializationError err = deserializeJson(doc, payload);
+
+        String action;
+        int32_t durationMs = -1;
+
+        if (!err && !doc["value"].isNull())
         {
-            Serial.println("Executing valid action: " + action);
-            executeValidAction(action);
-            state = action;
-            prefService.SaveActionState((char *)actionName.c_str(), (char *)action.c_str());
+            action = doc["value"].as<String>();
+            JsonVariant dur = doc["duration"];
+            if (!dur.isNull() && strcmp(dur.as<const char *>(), "*") != 0)
+                durationMs = (int32_t)(dur.as<float>() * 1000.0f);
         }
         else
         {
-            Serial.println("Invalid parameter : " + action);
+            action = payload;
         }
-    }
 
-protected:
-    String state;
+        applyAction(action, durationMs);
+    }
 };

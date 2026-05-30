@@ -194,6 +194,7 @@ void loop()
 {
   delay(100);
   handleReset();
+  onboardLed.loop();
   if (!provisioningMode)
   {
     if (!WiFi.isConnected())

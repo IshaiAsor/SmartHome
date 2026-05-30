@@ -37,8 +37,8 @@ class SocketService {
         console.log(`User ${userId} disconnected from WebSocket`);
       });
 
-      socket.on('action_state_update',async (data:{ actionId: number; state: any }) => {
-       await socketActionsService.handleActionUpdate(userId, data.actionId, data.state);
+      socket.on('action_state_update', async (data: { actionId: number; state: any; duration?: string }) => {
+        await socketActionsService.handleActionUpdate(userId, data.actionId, data.state, data.duration);
       });
     });
   }

@@ -5,17 +5,18 @@ import mqttService from "./mqtt.service";
 
 class SocketActionsService {
 
-  async handleActionUpdate(userId: number, actionId: number, state: string) {
+  async handleActionUpdate(userId: number, actionId: number, state: string, duration: string = '*') {
     let userAction = await userDevicesActionsRepository.getById(actionId);
     let userDevice = await userDevicesRepository.getById(userAction.user_device_id);
- 
+
     if (!userAction) {
       console.log(`Action ${actionId} not found`);
       return;
     }
 
     await userDevicesActionsRepository.updateState(actionId, state);
-    mqttService.publishActionState(userId, userDevice.id, userAction.action.mqtt_action_type ?? '', userAction.action.mqtt_action_name ?? '', state);
+    const payload = JSON.stringify({ value: state, duration });
+    mqttService.publishActionState(userId, userDevice.id, userAction.action.mqtt_action_type ?? '', userAction.action.mqtt_action_name ?? '', payload);
     socketService.publishActionStateUpdate(userId, actionId, state);
   }
 
