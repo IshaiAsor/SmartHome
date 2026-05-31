@@ -1,34 +1,43 @@
 <div class="header">
     <h1>Dashboard</h1>
 </div>
-<div class="card-grid" cdkDropList cdkDropListOrientation="mixed" (cdkDropListDropped)="drop($event)">
-    @for (action of actions; track action.id) {
-    <div class="device-card-wrapper" cdkDrag>
+<div class="card-grid" cdkDropList cdkDropListOrientation="mixed" cdkDropListSortingDisabled
+     (cdkDropListDropped)="drop($event)">
+    @for (item of items; track itemTrackId(item); let i = $index) {
+    <div class="device-card-wrapper" cdkDrag [cdkDragData]="item"
+         [attr.data-item-index]="i"
+         [class.group-hover]="groupDropTargetIndex === i"
+         (cdkDragStarted)="onDragStarted(i)"
+         (cdkDragMoved)="onDragMoved($event)"
+         (cdkDragEnded)="onDragEnded()">
+
         <div class="drag-rail" cdkDragHandle>
             <div class="drag-rail-dots">
                 <span></span><span></span><span></span>
                 <span></span><span></span><span></span>
             </div>
         </div>
-        <div class="device-card" [ngClass]="action.online ? 'card-enabled' : 'card-disabled'">
+
+        @if (item.kind === 'action') {
+        <div class="device-card" [ngClass]="item.action!.online ? 'card-enabled' : 'card-disabled'">
             <div class="card-header">
                 <span class="material-symbols-outlined device-icon">
-                    @switch (action.googleType?.value) {
+                    @switch (item.action!.googleType?.value) {
                     @case ('action.devices.types.OUTLET') { outlet }
                     @case ('action.devices.types.SENSOR') { thermometer }
                     @case ('action.devices.types.FAN') { toys_fan }
                     @case ('action.devices.types.LIGHT') { light_mode }
                     @default { device_unknown } }
                 </span>
-                <span class="card-name">{{ action.name }}</span>
+                <span class="card-name">{{ item.action!.name }}</span>
                 <span class="header-spacer"></span>
-                <span class="status-dot" [class.online]="action.online" [class.offline]="!action.online"
-                    [matTooltip]="action.online ? 'Online' : 'Offline'"></span>
+                <span class="status-dot" [class.online]="item.action!.online" [class.offline]="!item.action!.online"
+                    [matTooltip]="item.action!.online ? 'Online' : 'Offline'"></span>
                 <button mat-icon-button [matMenuTriggerFor]="actionMenu" class="card-menu-btn">
                     <mat-icon>more_vert</mat-icon>
                 </button>
                 <mat-menu #actionMenu="matMenu">
-                    <button mat-menu-item (click)="renameAction(action)">
+                    <button mat-menu-item (click)="renameAction(item.action!)">
                         <mat-icon>edit</mat-icon>
                         <span>Rename</span>
                     </button>
@@ -36,50 +45,71 @@
             </div>
 
             <div class="card-content">
-                @if (!action.online) {
+                @if (!item.action!.online) {
                 <div class="offline-overlay">
                     <mat-icon>wifi_off</mat-icon>
                     <span>Offline</span>
                 </div>
                 }
-                @if (action.googleTraits.some(trait => trait.value === 'action.devices.traits.OnOff')) {
+                @if (item.action!.googleTraits.some(trait => trait.value === 'action.devices.traits.OnOff')) {
                 <div class="control-onoff">
-                    <button class="power-btn" [class.on]="action.state === 'on'"
-                        (click)="changeActionState(action, action.state === 'on' ? 'off' : 'on')"
-                        [disabled]="action.state === 0" [matTooltip]="action.state === 'on' ? 'Turn off' : 'Turn on'">
+                    <button class="power-btn" [class.on]="item.action!.state === 'on'"
+                        (click)="changeActionState(item.action!, item.action!.state === 'on' ? 'off' : 'on')"
+                        [disabled]="item.action!.state === 0"
+                        [matTooltip]="item.action!.state === 'on' ? 'Turn off' : 'Turn on'">
                         <mat-icon>power_settings_new</mat-icon>
                     </button>
                 </div>
                 }
-                @if (action.googleTraits.some(trait => trait.value === 'action.devices.traits.FanSpeed' || trait.value
+                @if (item.action!.googleTraits.some(trait => trait.value === 'action.devices.traits.FanSpeed' || trait.value
                 === 'action.devices.traits.Brightness')) {
-                <svg class="speed-dial" viewBox="-8 -8 136 96" (pointerdown)="onDialPointerDown($event, action)"
-                    (pointermove)="onDialPointerMove($event, action)">
+                <svg class="speed-dial" viewBox="-8 -8 136 96"
+                    (pointerdown)="onDialPointerDown($event, item.action!)"
+                    (pointermove)="onDialPointerMove($event, item.action!)">
                     <path class="dial-track" [attr.d]="dialTrackPath()" />
-                    <path class="dial-active" [attr.d]="dialActivePath($any(action.state) || 0)" />
-                    <circle class="dial-thumb" [attr.cx]="dialThumbPt($any(action.state) || 0).x"
-                        [attr.cy]="dialThumbPt($any(action.state) || 0).y" r="7" />
+                    <path class="dial-active" [attr.d]="dialActivePath($any(item.action!.state) || 0)" />
+                    <circle class="dial-thumb" [attr.cx]="dialThumbPt($any(item.action!.state) || 0).x"
+                        [attr.cy]="dialThumbPt($any(item.action!.state) || 0).y" r="7" />
                     <text x="60" y="48" text-anchor="middle" dominant-baseline="middle" class="dial-value">{{
-                        $any(action.state) || 0 }}<tspan font-size="11" fill="#9e9e9e" dy="-3">%</tspan></text>
+                        $any(item.action!.state) || 0 }}<tspan font-size="11" fill="#9e9e9e" dy="-3">%</tspan></text>
                     <text x="60" y="62" text-anchor="middle" class="dial-unit">
-                        {{ action.googleTraits.some(t => t.value === 'action.devices.traits.Brightness') ? 'brightness'
-                        : 'speed' }}
+                        {{ item.action!.googleTraits.some(t => t.value === 'action.devices.traits.Brightness') ?
+                        'brightness' : 'speed' }}
                     </text>
                 </svg>
                 }
-                @if (action.googleType?.value === 'action.devices.types.SENSOR') {
-                @if (action.googleTraits.some(trait => trait.value === 'action.devices.traits.TemperatureSetting')) {
+                @if (item.action!.googleType?.value === 'action.devices.types.SENSOR') {
+                @if (item.action!.googleTraits.some(trait => trait.value ===
+                'action.devices.traits.TemperatureSetting')) {
                 <div class="sensor-display">
-                    <span class="sensor-value">{{ $any(action.state) | number:'1.0-1' }}</span>
+                    <span class="sensor-value">{{ $any(item.action!.state) | number:'1.0-1' }}</span>
                     <span class="sensor-unit">°C</span>
                 </div>
                 } @else {
                 <div class="sensor-display">
-                    <span class="sensor-value">{{ action.state }}</span>
+                    <span class="sensor-value">{{ item.action!.state }}</span>
                 </div>
                 } }
             </div>
+
         </div>
+        } @else {
+        <app-group-tile
+            [group]="item.group!"
+            (expand)="openGroup(item.group!)"
+            (rename)="renameGroup(item.group!)"
+            (ungroupAll)="ungroupAll(item.group!)">
+        </app-group-tile>
+        }
+
+        <!-- Group target hint: absolute overlay on the wrapper -->
+        @if (groupDropTargetIndex === i) {
+        <div class="group-drop-hint">
+            <mat-icon>create_new_folder</mat-icon>
+            <span>Drop to group</span>
+        </div>
+        }
+
         <div *cdkDragPlaceholder class="drag-placeholder"></div>
     </div>
     }

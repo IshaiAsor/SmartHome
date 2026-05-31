@@ -13,6 +13,8 @@ export interface DeviceActionView {
   actionName: string;
   state?: any;
   online?: boolean;
+  sortOrder: number;
+  groupName: string | null;
 }
 
 class DeviceActionsService {
@@ -32,6 +34,8 @@ class DeviceActionsService {
       state: a.current_state,
       deviceId: a.user_device_id,
       online: a.user_device?.online ?? false,
+      sortOrder: a.sort_order,
+      groupName: a.group_name ?? null,
     })));
   }
 
@@ -57,13 +61,16 @@ class DeviceActionsService {
       actionName: action.action_name,
       state: action.current_state,
       deviceId: action.user_device_id,
-      online: device.online ?? false
+      online: device.online ?? false,
+      sortOrder: action.sort_order,
+      groupName: action.group_name ?? null,
     };
   }
 
-  async updateAction(actionId: number, updates: { name?: string }) {
+  async updateAction(actionId: number, updates: { name?: string; group_name?: string | null }) {
     await userDevicesActionsRepository.updateAction(actionId, {
       ...(updates.name !== undefined && { action_name: updates.name }),
+      ...(updates.group_name !== undefined && { group_name: updates.group_name }),
     });
   }
 

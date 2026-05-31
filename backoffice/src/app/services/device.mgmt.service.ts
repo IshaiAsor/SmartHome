@@ -50,8 +50,10 @@ export interface DeviceActionView {
   state: unknown;
   deviceId: number;
   googleType: GoogleActionType | null;
-  online:boolean;
+  online: boolean;
   pins: DeviceActionPinView[];
+  sortOrder: number;
+  groupName: string | null;
 }
 
 export interface DeviceActionPinView {
