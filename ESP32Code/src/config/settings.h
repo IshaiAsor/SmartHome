@@ -2,7 +2,6 @@
 #ifndef DEVICE_TYPE_STR
 #error "DEVICE_TYPE_STR must be defined in build_flags (e.g. -D DEVICE_TYPE_STR=\"ESP32S3_Mini\")"
 #endif
-#pragma once
 #ifndef DEVICE_VERSION_STR
 #error "DEVICE_VERSION_STR must be defined in build_flags (e.g. -D DEVICE_VERSION_STR=\"V1.0.0\")"
 #endif

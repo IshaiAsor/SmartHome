@@ -23,6 +23,7 @@ jobs:
         run: |
           python - <<'PY'
           import json
+          import os
           import re
 
           text = open('ESP32Code/platformio.ini', encoding='utf-8').read()
@@ -43,7 +44,8 @@ jobs:
               if current is None:
                   continue
 
-              device_type_match = re.search(r'DEVICE_TYPE_STR\s*=\s*["\']?([^"\']+)["\']?', line)
+              # platformio.ini uses escaped quotes: -D DEVICE_TYPE_STR=\"ESP32S3_Mini\"
+              device_type_match = re.search(r'DEVICE_TYPE_STR\s*=\s*\\?"?([A-Za-z0-9_]+)', line)
               if device_type_match:
                   current['device-type'] = device_type_match.group(1).strip()
 
