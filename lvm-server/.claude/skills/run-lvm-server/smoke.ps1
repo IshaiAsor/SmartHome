@@ -1,4 +1,4 @@
-# Smoke test for hydro-vision-service
+# Smoke test for lvm-server
 # Starts the server, polls /api/v1/health, asserts status:ok, then kills the server.
 
 $ServiceDir = Resolve-Path "$PSScriptRoot\..\.."

@@ -132,11 +132,11 @@ services:
       - emqx
     restart: always
 
-  # Hydro Vision Service — plant health AI inference
-  hydro-vision-service:
+  # LVM Server — plant health AI inference
+  lvm-server:
     build:
-      context: ./hydro-vision-service
-    container_name: hydro-vision-service
+      context: ./lvm-server
+    container_name: lvm-server
     ports:
       - '3002:3000'
     restart: always

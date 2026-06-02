@@ -2,7 +2,7 @@
 # Source: Roboflow universe — lettuce-j9wu0-lmci0 v1, CC BY 4.0
 # 5,170 images — train / valid / test split
 #
-# path is relative to the hydro-vision-service/ directory (where train.py runs from).
+# path is relative to the lvm-server/ directory (where train.py runs from).
 # Update if you rename or relocate the dataset folder.
 
 path: ./training/datasets/lettuce-v1

@@ -1,4 +1,4 @@
-# Hydro Vision Service
+# LVM Server
 
 AI microservice that runs ONNX-based YOLOv8 inference on plant images to detect
 lettuce health states and emit hydroponic farm control instructions.
@@ -17,13 +17,13 @@ lettuce health states and emit hydroponic farm control instructions.
 ## Prerequisites
 
 - Node.js 22+
-- `best.onnx` must exist in the service root (`hydro-vision-service/best.onnx`)
-- Run `npm install` in `hydro-vision-service/` before starting
+- `best.onnx` must exist in the service root (`lvm-server/best.onnx`)
+- Run `npm install` in `lvm-server/` before starting
 
 ## Commands
 
 ```powershell
-# From hydro-vision-service/
+# From lvm-server/
 npm install       # install dependencies
 npm start         # production (node --loader ts-node/esm server.ts)
 npm run dev       # development (ts-node --esm server.ts)
@@ -64,16 +64,16 @@ npm run dev       # development (ts-node --esm server.ts)
 ## Training
 
 See [training/](../training/) for the full retraining pipeline (Python + YOLOv8).
-Run "Train Hydro Vision Model" from VS Code Run & Debug to retrain and export a new `best.onnx`.
+Run "Train LVM Server Model" from VS Code Run & Debug to retrain and export a new `best.onnx`.
 
 ## Docker
 
 ```powershell
 # Build locally
-docker build -t hydro-vision-service .
+docker build -t lvm-server .
 
 # Or via compose (port 3002)
-docker compose up hydro-vision-service
+docker compose up lvm-server
 ```
 
 ## Smoke Test

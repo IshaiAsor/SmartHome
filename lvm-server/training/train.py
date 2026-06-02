@@ -1,10 +1,10 @@
 """
 Full training pipeline: YOLOv8 train → ONNX export → deploy to service root.
 
-Run from the hydro-vision-service/ directory:
+Run from the lvm-server/ directory:
     python training/train.py
 
-Or use the VS Code "Train Hydro Vision Model" launch configuration.
+Or use the VS Code "Train LVM Server Model" launch configuration.
 
 After training completes, best.onnx in the service root is overwritten with
 the newly trained model. Restart the service to pick up the new model.
@@ -25,7 +25,7 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument(
         "--data",
         default="training/datasets/lettuce-v1/data.yaml",
-        help="Path to dataset data.yaml (relative to hydro-vision-service/)",
+        help="Path to dataset data.yaml (relative to lvm-server/)",
     )
     parser.add_argument(
         "--base-model",

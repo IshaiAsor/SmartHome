@@ -1,5 +1,5 @@
 {
-  "name": "hydro-vision-service",
+  "name": "lvm-server",
   "version": "1.0.0",
   "description": "",
   "main": "index.js",

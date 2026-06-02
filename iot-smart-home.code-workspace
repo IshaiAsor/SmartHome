@@ -24,6 +24,10 @@
       "name": "Prisma",
       "path": "prisma",
     },
+    {
+      "name": "LVM Server",
+      "path": "lvm-server",
+    },
   ],
   "settings": {
     "files.exclude": {
