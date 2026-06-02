@@ -1,13 +1,13 @@
-name: Build and Push LVM Server Image
+name: Build and Push VLM Server Image
 
 on:
   push:
     branches: [ "main", "master" ]
     paths:
-      - 'lvm-server/**'
+      - 'vlm-server/**'
 
 jobs:
-  build-and-push-lvm-server:
+  build-and-push-vlm-server:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout repository
@@ -36,14 +36,14 @@ jobs:
           WITH_V: true
           DEFAULT_BUMP: patch
 
-      - name: Build and push LVM Server Image
+      - name: Build and push VLM Server Image
         uses: docker/build-push-action@v5
         with:
-          context: ./lvm-server
+          context: ./vlm-server
           platforms: linux/amd64,linux/arm64
           push: true
           tags: |
-            ghcr.io/ishaiasor/smarthome-lvm-server:${{ steps.tag_version.outputs.new_tag }}
-            ghcr.io/ishaiasor/smarthome-lvm-server:latest
+            ghcr.io/ishaiasor/smarthome-vlm-server:${{ steps.tag_version.outputs.new_tag }}
+            ghcr.io/ishaiasor/smarthome-vlm-server:latest
           cache-from: type=gha
           cache-to: type=gha,mode=max
