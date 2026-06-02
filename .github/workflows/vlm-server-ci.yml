@@ -9,11 +9,14 @@ on:
 jobs:
   build-and-push-vlm-server:
     runs-on: ubuntu-latest
+    permissions:
+      contents: write
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
         with:
           fetch-depth: 0
+          tags: true
 
       - name: Set up QEMU
         uses: docker/setup-qemu-action@v3
@@ -33,8 +36,9 @@ jobs:
         uses: anothrNick/github-tag-action@1.64.0
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          WITH_V: true
+          TAG_PREFIX: v
           DEFAULT_BUMP: patch
+          GIT_API_TAGGING: false
 
       - name: Build and push VLM Server Image
         uses: docker/build-push-action@v5
