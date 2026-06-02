@@ -227,6 +227,7 @@ model DeviceVlmConfig {
   last_analyzed_at      DateTime?        @db.Timestamp(6)
   user_device_action    UserDeviceAction @relation(fields: [user_device_action_id], references: [id], onDelete: Cascade)
   vlm_model             VlmModel         @relation(fields: [vlm_model_id], references: [id], onDelete: Cascade)
+  vlm_analysis_logs     VlmAnalysisLog[]
 
   @@map("device_vlm_configs")
 }
@@ -245,6 +246,7 @@ model SensorHistory {
 model VlmAnalysisLog {
   id                   Int      @id @default(autoincrement())
   device_vlm_config_id Int
+  device_vlm_config    DeviceVlmConfig @relation(fields: [device_vlm_config_id], references: [id], onDelete: Cascade)
   input_image_hash     String?  @db.VarChar(64)
   input_detections     Json
   input_sensors        Json?
