@@ -241,9 +241,6 @@ void loop()
       Serial.println("MQTT connection lost. Restarting to re-enter provisioning mode...");
       ESP.restart();
     }
-    // #ifdef HAS_CAMERA
-    //     liveStreamService.loop();
-    // #endif
     handleTelametryReading();
     loopCommnds();
   }
