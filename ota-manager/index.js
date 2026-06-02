@@ -61,6 +61,24 @@ const mqttClient = mqtt.connect(mqttOptions);
 
 mqttClient.on('connect', () => {
     console.log('✅ Connected to MQTT Broker');
+    // Republish retained OTA messages for any firmware already in storage
+    // (covers the case where the init container wrote files before this process started)
+    try {
+        const deviceDirs = fs.readdirSync(firmwarePath, { withFileTypes: true })
+            .filter(d => d.isDirectory())
+            .map(d => d.name);
+        for (const device of deviceDirs) {
+            const metaFile = path.join(firmwarePath, device, 'latest.json');
+            if (fs.existsSync(metaFile)) {
+                const meta = JSON.parse(fs.readFileSync(metaFile, 'utf8'));
+                const topic = `ota/updates/${device}`;
+                mqttClient.publish(topic, JSON.stringify(meta), { qos: 1, retain: true });
+                console.log(`📡 Republished retained OTA message for ${device} ${meta.version}`);
+            }
+        }
+    } catch (err) {
+        console.error('⚠️  Failed to republish firmware metadata:', err.message);
+    }
 });
 
 // --- API Routes ---

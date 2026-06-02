@@ -3,14 +3,17 @@ FROM alpine:3.18
 ARG VERSION
 LABEL org.opencontainers.image.title="SmartHome ESP32 firmware"
 LABEL org.opencontainers.image.version=${VERSION}
+ENV FIRMWARE_VERSION=${VERSION}
 
 RUN mkdir -p /firmware
 
 # Copy all firmware variants from build context
 # Each device type has its own directory: ESP32S3_Mini/, ESP32S3_MultiSocket/, etc.
 COPY . /firmware/
-
-# List available firmware variants for reference
 RUN ls -la /firmware/
+
+COPY entrypoint.sh /entrypoint.sh
+RUN chmod +x /entrypoint.sh
+ENTRYPOINT ["/entrypoint.sh"]
 
 
