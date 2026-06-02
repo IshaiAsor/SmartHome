@@ -1,8 +1,7 @@
 import { userRulesRepository, UserRuleWithDetails } from '../dal/user.rules.repository';
 import { userDevicesActionsRepository } from '../dal/user.devices.actions.repository';
 import { userDevicesRepository } from '../dal/user.devices.repository';
-import mqttService, { MqttChannel } from './mqtt.service';
-import socketService from './socket.service';
+import { actionHubService } from './action.hub.service';
 
 type ScheduleParams = { time?: string; days?: number[] };
 type StateParams = { user_device_action_id?: number; operator?: string; value?: string };
@@ -121,19 +120,8 @@ class RulesEngineService {
     for (const ruleAction of rule.actions) {
       const execute = async () => {
         try {
-          const userDeviceAction = await userDevicesActionsRepository.getById(ruleAction.user_device_action_id);
-          if (!userDeviceAction) return;
-
-          const state = ruleAction.target_state;
-          const deviceId = userDeviceAction.user_device_id;
-          const actionType = (userDeviceAction.action.mqtt_action_type ?? 'command') as MqttChannel;
-          const actionName = userDeviceAction.action.mqtt_action_name ?? '';
-
-          await userDevicesActionsRepository.updateState(ruleAction.user_device_action_id, state);
-          mqttService.publish(userId, deviceId, actionType, actionName, state);
-          socketService.publishActionStateUpdate(userId, ruleAction.user_device_action_id, state);
-
-          console.log(`[RulesEngine] Rule "${rule.name}" fired: set action ${ruleAction.user_device_action_id} to "${state}"`);
+          await actionHubService.dispatch(userId, ruleAction.user_device_action_id, ruleAction.target_state, 'rules', { skipRulesEval: true });
+          console.log(`[RulesEngine] Rule "${rule.name}" fired: set action ${ruleAction.user_device_action_id} to "${ruleAction.target_state}"`);
         } catch (err) {
           console.error(`[RulesEngine] Error executing action for rule "${rule.name}":`, err);
         }

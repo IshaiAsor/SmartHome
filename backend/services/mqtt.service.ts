@@ -9,7 +9,7 @@ import { userDevicesActionsRepository } from '../dal/user.devices.actions.reposi
 import { deviceMgmtService } from './device.mgmt.service';
 import { deviceActionsService } from './device.actions.service';
 import { googleHomegraphService } from './google-smart-home/google.homegraph.service';
-import { rulesEngineService } from './rules.engine.service';
+import { actionHubService } from './action.hub.service';
 
 export type MqttChannel = 'command' | 'telemetry';
 export type CommandName = 'reprovision' | 'soft-reset' | 'hard-reset' | 'restart';
@@ -105,9 +105,7 @@ class MqttService {
       return;
     }
       if (channel === 'telemetry') {
-          await userDevicesActionsRepository.updateState(action.id, payload);
-          socketService.publishActionStateUpdate(userId, action.id, payload);
-          rulesEngineService.evaluateForUser(userId);
+          await actionHubService.dispatch(userId, action.id, payload, 'mqtt', { skipMqttPublish: true });
 
           // Report state to Google Homegraph (skip for high-frequency binary types like camera)
           if (action.action.implementation_type !== 'TakePictureAction') {
@@ -117,8 +115,7 @@ class MqttService {
               await googleHomegraphService.reportState(userId.toString(), actionView);
             }
           }
-          
-      } 
+      }
     });
   }
 

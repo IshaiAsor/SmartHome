@@ -1,6 +1,6 @@
 import { SmartHomeV1ExecuteRequestExecution } from 'actions-on-google';
 import { deviceActionsService, DeviceActionView } from '../device.actions.service';
-import socketActionsService from '../socket.actions.service';
+import { actionHubService } from '../action.hub.service';
 
 type ValueMapper = (params: any) => string | undefined;
 
@@ -73,7 +73,7 @@ class GoogleExecuteDeviceService {
         }
 
         console.log(`Executing '${execution.command}' → '${deviceValue}' on device ${deviceId}`);
-        await socketActionsService.handleActionUpdate(userId, userAction.id, deviceValue);
+        await actionHubService.dispatch(userId, userAction.id, deviceValue, 'google');
       } catch (err) {
         console.error(`Failed to execute command on device ${deviceId}:`, err);
       }
