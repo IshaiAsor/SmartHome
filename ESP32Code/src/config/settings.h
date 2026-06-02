@@ -2,8 +2,12 @@
 #ifndef DEVICE_TYPE_STR
 #error "DEVICE_TYPE_STR must be defined in build_flags (e.g. -D DEVICE_TYPE_STR=\"ESP32S3_Mini\")"
 #endif
+#pragma once
+#ifndef DEVICE_VERSION
+#error "DEVICE_VERSION must be defined in build_flags (e.g. -D DEVICE_VERSION=\"V1.0.0\")"
+#endif
 const char DEVICE_TYPE[] = DEVICE_TYPE_STR;
-const char DEVICE_VERSION[] = "V1.0.0";
+const char DEVICE_VERSION[] = DEVICE_VERSION;
 const char COMMAND_TOPIC[] = "users/%{userid}/devices/%{deviceid}/%{version}/command/#";
 const char STATUS_TOPIC[] = "users/%{userid}/devices/%{deviceid}/%{version}/status";
 const char TELEMETRY_TOPIC[] = "users/%{userid}/devices/%{deviceid}/%{version}/telemetry/#";

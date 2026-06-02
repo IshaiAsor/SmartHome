@@ -11,36 +11,53 @@ jobs:
     runs-on: ubuntu-latest
     outputs:
       matrix: ${{ steps.set-matrix.outputs.matrix }}
+      new_tag: ${{ steps.tag_version.outputs.new_tag }}
     steps:
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          persist-credentials: true
 
       - name: Generate firmware matrix from platformio.ini
         id: set-matrix
         run: |
           python - <<'PY'
           import json
-          import os
           import re
 
           text = open('ESP32Code/platformio.ini', encoding='utf-8').read()
           matrix = {'include': []}
+          current = None
 
           for line in text.splitlines():
-              match = re.match(r'^\[env:([^\]]+)\]', line)
-              if match:
-                  env_name = match.group(1).strip()
-                  if env_name.endswith('-prod'):
-                      device_type = env_name.replace('-prod', '').replace('_', '-')
-                      matrix['include'].append({
-                          'env-name': env_name,
-                          'device-type': device_type,
-                      })
+              section = re.match(r'^\[env:([^\]]+)\]', line)
+              if section:
+                  if current and current['env-name'].endswith('-prod'):
+                      matrix['include'].append(current)
+                  current = {
+                      'env-name': section.group(1).strip(),
+                      'device-type': None,
+                  }
+                  continue
+
+              if current is None:
+                  continue
+
+              device_type_match = re.search(r'DEVICE_TYPE_STR\s*=\s*["\']?([^"\']+)["\']?', line)
+              if device_type_match:
+                  current['device-type'] = device_type_match.group(1).strip()
+
+          if current and current['env-name'].endswith('-prod'):
+              matrix['include'].append(current)
+
+          for item in matrix['include']:
+              if item['device-type'] is None:
+                  item['device-type'] = item['env-name'].replace('-prod', '').replace('_', '-')
 
           matrix_json = json.dumps(matrix)
           print(matrix_json)
           with open('matrix.json', 'w', encoding='utf-8') as f:
               f.write(matrix_json)
-          print(f'matrix<<EOF\n{matrix_json}\nEOF')
           with open(os.environ['GITHUB_OUTPUT'], 'a', encoding='utf-8') as out:
               out.write(f'matrix<<EOF\n{matrix_json}\nEOF\n')
           PY
@@ -48,6 +65,38 @@ jobs:
       - name: Debug generated matrix
         run: |
           cat matrix.json
+
+      - name: Bump version and push tag
+        id: tag_version
+        uses: anothrNick/github-tag-action@1.64.0
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          WITH_V: true
+          DEFAULT_BUMP: patch
+
+      - name: Update DEVICE_VERSION in platformio.ini
+        if: github.actor != 'github-actions'
+        run: |
+          VERSION="${{ steps.tag_version.outputs.new_tag }}"
+          python - <<'PY'
+          from pathlib import Path
+          import re
+
+          path = Path('ESP32Code/platformio.ini')
+          text = path.read_text(encoding='utf-8')
+          new_text = re.sub(r'(-D\s*DEVICE_VERSION\s*=\s*")[^"]*(")', rf'\1{VERSION}\2', text)
+          path.write_text(new_text, encoding='utf-8')
+          PY
+
+          if ! git diff --quiet -- ESP32Code/platformio.ini; then
+            git config user.name "github-actions"
+            git config user.email "github-actions@github.com"
+            git add ESP32Code/platformio.ini
+            git commit -m "chore: update PlatformIO DEVICE_VERSION to ${VERSION}"
+            git push
+          else
+            echo "platformio.ini already contains ${VERSION}"
+          fi
 
   build-firmware-matrix:
     needs: generate-firmware-matrix
@@ -79,7 +128,7 @@ jobs:
       - name: Build firmware for ${{ matrix.device-type }}
         run: |
           cd ESP32Code
-          pio run -e ${{ matrix.env-name }}
+          pio run -e ${{ matrix.env-name }} -D DEVICE_VERSION="${{ needs.generate-firmware-matrix.outputs.new_tag }}"
 
       - name: Upload firmware artifact
         uses: actions/upload-artifact@v4
@@ -92,20 +141,10 @@ jobs:
   build-and-push-image:
     needs: build-firmware-matrix
     runs-on: ubuntu-latest
-    outputs:
-      new_tag: ${{ steps.tag_version.outputs.new_tag }}
     steps:
       - uses: actions/checkout@v4
         with:
           fetch-depth: 0
-
-      - name: Bump version and push tag
-        id: tag_version
-        uses: anothrNick/github-tag-action@1.64.0
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          WITH_V: true
-          DEFAULT_BUMP: patch
 
       - name: Download all firmware artifacts
         uses: actions/download-artifact@v4
@@ -141,14 +180,14 @@ jobs:
           push: true
           platforms: linux/amd64,linux/arm64
           tags: |
-            ghcr.io/ishaiasor/smarthome-firmware:${{ steps.tag_version.outputs.new_tag }}
+            ghcr.io/ishaiasor/smarthome-firmware:${{ needs.generate-firmware-matrix.outputs.new_tag }}
             ghcr.io/ishaiasor/smarthome-firmware:latest
           build-args: |
-            VERSION=${{ steps.tag_version.outputs.new_tag }}
+            VERSION=${{ needs.generate-firmware-matrix.outputs.new_tag }}
 
       # - name: Upload firmware variants to OTA Manager
       #   run: |
-      #     VERSION="${{ steps.tag_version.outputs.new_tag }}"
+      #     VERSION="${{ needs.generate-firmware-matrix.outputs.new_tag }}"
       #     for device_dir in firmware-staging/*/; do
       #       device_type=$(basename "$device_dir")
       #       firmware_file="$device_dir/firmware.bin"
@@ -156,6 +195,6 @@ jobs:
       #       curl -X POST https://ota.iotiotstg.duckdns.org/release \
       #         -F "deviceType=$device_type" \
       #         -F "version=$VERSION" \
-      #         -F "releaseNotes=Multi-device build v$VERSION" \
+      #         -F "releaseNotes=Multi-device build $VERSION" \
       #         -F "firmware=@$firmware_file"
       #     done
