@@ -13,6 +13,9 @@ on:
 jobs:
   build-and-push-server:
     runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      packages: write
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4

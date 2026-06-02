@@ -52,6 +52,9 @@ jobs:
   build-firmware-matrix:
     needs: generate-firmware-matrix
     runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      packages: write
     strategy:
       matrix: ${{ fromJson(needs.generate-firmware-matrix.outputs.matrix) }}
     steps:
