@@ -143,16 +143,16 @@ jobs:
           build-args: |
             VERSION=${{ steps.tag_version.outputs.new_tag }}
 
-      - name: Upload firmware variants to OTA Manager
-        run: |
-          VERSION="${{ steps.tag_version.outputs.new_tag }}"
-          for device_dir in firmware-staging/*/; do
-            device_type=$(basename "$device_dir")
-            firmware_file="$device_dir/firmware.bin"
-            echo "Uploading $device_type firmware v$VERSION to OTA Manager..."
-            curl -X POST https://ota.iotiotstg.duckdns.org/release \
-              -F "deviceType=$device_type" \
-              -F "version=$VERSION" \
-              -F "releaseNotes=Multi-device build v$VERSION" \
-              -F "firmware=@$firmware_file"
-          done
+      # - name: Upload firmware variants to OTA Manager
+      #   run: |
+      #     VERSION="${{ steps.tag_version.outputs.new_tag }}"
+      #     for device_dir in firmware-staging/*/; do
+      #       device_type=$(basename "$device_dir")
+      #       firmware_file="$device_dir/firmware.bin"
+      #       echo "Uploading $device_type firmware v$VERSION to OTA Manager..."
+      #       curl -X POST https://ota.iotiotstg.duckdns.org/release \
+      #         -F "deviceType=$device_type" \
+      #         -F "version=$VERSION" \
+      #         -F "releaseNotes=Multi-device build v$VERSION" \
+      #         -F "firmware=@$firmware_file"
+      #     done
