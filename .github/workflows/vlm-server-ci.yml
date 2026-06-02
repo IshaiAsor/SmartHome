@@ -36,9 +36,9 @@ jobs:
         uses: anothrNick/github-tag-action@1.64.0
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          TAG_PREFIX: v
+          WITH_V: true
+          DEFAULT_BRANCH: master
           DEFAULT_BUMP: patch
-          GIT_API_TAGGING: false
 
       - name: Build and push VLM Server Image
         uses: docker/build-push-action@v5
