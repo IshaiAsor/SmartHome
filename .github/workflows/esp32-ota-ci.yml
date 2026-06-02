@@ -146,7 +146,7 @@ jobs:
 
   # Consolidate all firmware variants into a single OCI image
   build-and-push-image:
-    needs: build-firmware-matrix
+    needs: [build-firmware-matrix, generate-firmware-matrix]
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
