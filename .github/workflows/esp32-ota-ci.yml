@@ -79,14 +79,17 @@ jobs:
       - name: Update DEVICE_VERSION_STR in platformio.ini
         if: github.actor != 'github-actions'
         run: |
-          VERSION="${{ steps.tag_version.outputs.new_tag }}"
+          export VERSION="${{ steps.tag_version.outputs.new_tag }}"
           python - <<'PY'
           from pathlib import Path
+          import os
           import re
 
+          version = os.environ['VERSION']
           path = Path('ESP32Code/platformio.ini')
           text = path.read_text(encoding='utf-8')
-          new_text = re.sub(r'(-D\s*DEVICE_VERSION_STR\s*=\s*")[^"]*(")', rf'\1{VERSION}\2', text)
+          # platformio.ini uses escaped quotes: -D DEVICE_VERSION_STR=\"V1.0.0\"
+          new_text = re.sub(r'(-D\s*DEVICE_VERSION_STR\s*=\s*\\")[^\\"]*(\\")', rf'\g<1>{version}\g<2>', text)
           path.write_text(new_text, encoding='utf-8')
           PY
 
