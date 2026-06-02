@@ -91,7 +91,7 @@
         "type": "node",
         "request": "launch",
         "name": "Debug VLM Server",
-        "runtimeExecutable": "${workspaceFolder:VLM Server}/node_modules/.bin/ts-node-esm.cmd",
+        "runtimeExecutable": "${workspaceFolder:VLM Server}/node_modules/.bin/tsx",
         "runtimeArgs": [],
         "program": "${workspaceFolder:VLM Server}/server.ts",
         "cwd": "${workspaceFolder:VLM Server}",
