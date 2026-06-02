@@ -101,6 +101,8 @@ model User {
   user_devices        UserDevice[]
   user_login_audit    UserLoginAudit[]
   user_rules          UserRule[]
+  vlm_models          VlmModel[]
+  emergency_rules     EmergencyRule[]
 
   @@map("users")
 }
@@ -135,6 +137,10 @@ model UserDeviceAction {
   user_device    UserDevice @relation(fields: [user_device_id], references: [id], onDelete: Cascade)
   action         DeviceAction @relation(fields: [action_id], references: [id], onDelete: Cascade)
   rule_actions   UserRuleAction[]
+  device_vlm_config DeviceVlmConfig?
+  sensor_history    SensorHistory[]
+  emergency_source  EmergencyRule[]  @relation("EmergencySource")
+  emergency_target  EmergencyRule[]  @relation("EmergencyTarget")
 
   @@map("user_device_actions")
 }
@@ -196,4 +202,85 @@ model UserRuleAction {
   user_device_action    UserDeviceAction @relation(fields: [user_device_action_id], references: [id], onDelete: Cascade)
 
   @@map("user_rule_actions")
+}
+
+model VlmModel {
+  id              Int               @id @default(autoincrement())
+  user_id         Int
+  name            String            @db.VarChar(100)
+  type            String            @default("onnx_local") @db.VarChar(50)
+  endpoint_url    String            @db.VarChar(500)
+  config          Json?
+  created_at      DateTime          @default(now()) @db.Timestamp(6)
+  user            User              @relation(fields: [user_id], references: [id], onDelete: Cascade)
+  device_configs  DeviceVlmConfig[]
+
+  @@map("vlm_models")
+}
+
+model DeviceVlmConfig {
+  id                    Int              @id @default(autoincrement())
+  user_device_action_id Int              @unique
+  vlm_model_id          Int
+  enabled               Boolean          @default(true)
+  analysis_interval_sec Int              @default(30)
+  last_analyzed_at      DateTime?        @db.Timestamp(6)
+  user_device_action    UserDeviceAction @relation(fields: [user_device_action_id], references: [id], onDelete: Cascade)
+  vlm_model             VlmModel         @relation(fields: [vlm_model_id], references: [id], onDelete: Cascade)
+
+  @@map("device_vlm_configs")
+}
+
+model SensorHistory {
+  id                    Int              @id @default(autoincrement())
+  user_device_action_id Int
+  value                 String           @db.VarChar(255)
+  recorded_at           DateTime         @default(now()) @db.Timestamp(6)
+  user_device_action    UserDeviceAction @relation(fields: [user_device_action_id], references: [id], onDelete: Cascade)
+
+  @@index([user_device_action_id, recorded_at])
+  @@map("sensor_history")
+}
+
+model VlmAnalysisLog {
+  id                   Int      @id @default(autoincrement())
+  device_vlm_config_id Int
+  input_image_hash     String?  @db.VarChar(64)
+  input_detections     Json
+  input_sensors        Json?
+  llm_prompt           String?  @db.Text
+  llm_response         String?  @db.Text
+  decision             String?  @db.VarChar(255)
+  created_at           DateTime @default(now()) @db.Timestamp(6)
+
+  @@map("vlm_analysis_logs")
+}
+
+model EmergencyRule {
+  id                    Int               @id @default(autoincrement())
+  user_id               Int
+  name                  String            @db.VarChar(255)
+  user_device_action_id Int
+  operator              String            @db.VarChar(5)
+  threshold_value       String            @db.VarChar(100)
+  target_action_id      Int?
+  target_state          String?           @db.VarChar(255)
+  enabled               Boolean           @default(true)
+  created_at            DateTime          @default(now()) @db.Timestamp(6)
+  user                  User              @relation(fields: [user_id], references: [id], onDelete: Cascade)
+  sensor_action         UserDeviceAction  @relation("EmergencySource", fields: [user_device_action_id], references: [id], onDelete: Cascade)
+  target_action         UserDeviceAction? @relation("EmergencyTarget", fields: [target_action_id], references: [id], onDelete: SetNull)
+  events                EmergencyEvent[]
+
+  @@map("emergency_rules")
+}
+
+model EmergencyEvent {
+  id                Int           @id @default(autoincrement())
+  emergency_rule_id Int
+  triggered_value   String        @db.VarChar(255)
+  fired_at          DateTime      @default(now()) @db.Timestamp(6)
+  rule              EmergencyRule @relation(fields: [emergency_rule_id], references: [id], onDelete: Cascade)
+
+  @@map("emergency_events")
 }

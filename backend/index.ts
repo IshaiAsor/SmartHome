@@ -19,7 +19,12 @@ import deviceConfigurationRoutes from './routes/device.configuration.routes';
 import userRulesRoutes from './routes/user.rules.routes';
 import adminDeviceConfigRoutes from './routes/admin.device.config.routes';
 import cameraRoutes from './routes/camera.routes';
+import vlmRoutes from './routes/vlm.routes';
+import emergencyRoutes from './routes/emergency.routes';
 import { rulesEngineService } from './services/rules.engine.service';
+import { vlmService } from './services/vlm.service';
+import { vlmRepository } from './dal/vlm.repository';
+import { sensorHistoryRepository } from './dal/sensor.history.repository';
 import cron from 'node-cron';
 import http from 'http';
 import socketService from './services/socket.service';
@@ -63,6 +68,8 @@ app.use('/api/device', deviceConfigurationRoutes);
 app.use('/api/rules', userRulesRoutes);
 app.use('/api/admin/device-config', adminDeviceConfigRoutes);
 app.use('/api/camera', cameraRoutes);
+app.use('/api/vlm', vlmRoutes);
+app.use('/api/emergency', emergencyRoutes);
 
 
 const rootDir = process.cwd();
@@ -86,6 +93,33 @@ if (fs.existsSync(publicPath)) {
 async function startServer() {
   redisService.connect();
   cron.schedule('* * * * *', () => rulesEngineService.evaluateScheduledRules());
+
+  // VLM interval analysis — checks each DeviceVlmConfig every 10s against its configured interval
+  setInterval(async () => {
+    try {
+      const configs = await vlmRepository.getEnabledConfigs();
+      for (const cfg of configs) {
+        const elapsed = cfg.last_analyzed_at
+          ? (Date.now() - new Date(cfg.last_analyzed_at).getTime()) / 1000
+          : Infinity;
+        if (elapsed >= cfg.analysis_interval_sec) {
+          vlmService.runAnalysis(cfg).catch(err =>
+            console.error('[VLM] Analysis error:', err instanceof Error ? err.message : err)
+          );
+        }
+      }
+    } catch (err) {
+      console.error('[VLM] Interval job error:', err);
+    }
+  }, 10_000);
+
+  // Prune sensor history older than 30 days (runs daily at midnight)
+  cron.schedule('0 0 * * *', () =>
+    sensorHistoryRepository.pruneOlderThan(30).catch(err =>
+      console.error('[SensorHistory] Prune error:', err)
+    )
+  );
+
   server.listen(config.port, () => {
     console.log(`🚀 Smart Home Server running on port ${config.port}`);
   });

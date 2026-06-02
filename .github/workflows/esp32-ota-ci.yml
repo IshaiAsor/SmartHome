@@ -7,23 +7,22 @@ on:
       - 'ESP32Code/**'
 
 jobs:
-  build-and-upload-staging:
+  # Build all production firmware configurations in parallel
+  build-firmware-matrix:
     runs-on: ubuntu-latest
-    outputs:
-      new_tag: ${{ steps.tag_version.outputs.new_tag }}
+    strategy:
+      matrix:
+        include:
+          - env-name: esp32s3_mini-prod
+            device-type: ESP32S3_Mini
+          - env-name: 4d_systems_esp32s3_gen4_r8n16-prod
+            device-type: ESP32S3_MultiSocket
+          - env-name: esp32wrover_e-prod
+            device-type: ESP32S3_Wrover
+          - env-name: freenove_wrover_cam-prod
+            device-type: ESP32_WroverCam
     steps:
       - uses: actions/checkout@v4
-        with:
-          fetch-depth: 0
-
-      # 1. Generate a new Tag (Auto-increment) matching your web-app style
-      - name: Bump version and push tag
-        id: tag_version
-        uses: anothrNick/github-tag-action@1.64.0
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          WITH_V: true
-          DEFAULT_BUMP: patch
 
       - name: Cache PlatformIO
         uses: actions/cache@v4
@@ -41,10 +40,52 @@ jobs:
           python -m pip install --upgrade pip
           pip install --upgrade platformio
 
-      - name: Build Firmware
+      - name: Build firmware for ${{ matrix.device-type }}
         run: |
           cd ESP32Code
-          pio run -e esp32s3_mini-prod
+          pio run -e ${{ matrix.env-name }}
+
+      - name: Upload firmware artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: firmware-${{ matrix.device-type }}
+          path: ESP32Code/.pio/build/${{ matrix.env-name }}/firmware.bin
+          retention-days: 1
+
+  # Consolidate all firmware variants into a single OCI image
+  build-and-push-image:
+    needs: build-firmware-matrix
+    runs-on: ubuntu-latest
+    outputs:
+      new_tag: ${{ steps.tag_version.outputs.new_tag }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Bump version and push tag
+        id: tag_version
+        uses: anothrNick/github-tag-action@1.64.0
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          WITH_V: true
+          DEFAULT_BUMP: patch
+
+      - name: Download all firmware artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: firmware-artifacts
+
+      - name: Prepare firmware for Docker build
+        run: |
+          mkdir -p firmware-staging
+          for device_dir in firmware-artifacts/firmware-*/; do
+            device_name=$(basename "$device_dir" | sed 's/firmware-//')
+            mkdir -p "firmware-staging/$device_name"
+            cp "$device_dir/firmware.bin" "firmware-staging/$device_name/"
+          done
+          cp ESP32Code/Dockerfile.firmware firmware-staging/Dockerfile
+          ls -la firmware-staging/
 
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
@@ -56,11 +97,11 @@ jobs:
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Build and push firmware image
+      - name: Build and push multi-variant firmware image
         uses: docker/build-push-action@v5
         with:
-          context: ESP32Code
-          file: ESP32Code/Dockerfile.firmware
+          context: firmware-staging
+          file: firmware-staging/Dockerfile
           push: true
           platforms: linux/amd64,linux/arm64
           tags: |
@@ -69,31 +110,17 @@ jobs:
           build-args: |
             VERSION=${{ steps.tag_version.outputs.new_tag }}
 
-  #     - name: Upload to Staging OTA Manager
-  #       run: |
-  #         VERSION=${{ steps.tag_version.outputs.new_tag }}
-  #         curl -X POST https://ota.iotiotstg.duckdns.org/release \
-  #           -F "deviceType=ESP32_SmartOutlet" \
-  #           -F "version=$VERSION" \
-  #           -F "releaseNotes=Automated build for $VERSION" \
-  #           -F "firmware=@ESP32Code/.pio/build/esp32s3_mini-prod/firmware.bin"
+      - name: Upload firmware variants to OTA Manager
+        run: |
+          VERSION="${{ steps.tag_version.outputs.new_tag }}"
+          for device_dir in firmware-staging/*/; do
+            device_type=$(basename "$device_dir")
+            firmware_file="$device_dir/firmware.bin"
+            echo "Uploading $device_type firmware v$VERSION to OTA Manager..."
+            curl -X POST https://ota.iotiotstg.duckdns.org/release \
+              -F "deviceType=$device_type" \
+              -F "version=$VERSION" \
+              -F "releaseNotes=Multi-device build v$VERSION" \
+              -F "firmware=@$firmware_file"
+          done
 
-  # register-freight:
-  #   needs: build-and-upload-staging
-  #   runs-on: ubuntu-latest
-  #   steps:
-  #     - uses: actions/checkout@v4
-  #       with:
-  #         repository: IshaiAsor/oci-k3s-gitops
-  #         token: ${{ secrets.GITOPS_PAT }}
-
-  #     - name: Update Firmware Version for Kargo
-  #       run: |
-  #         VERSION=${{ needs.build-and-upload-staging.outputs.new_tag }}
-  #         # Note: We need to expose the tag from the previous job
-  #         echo $VERSION > firmware-version.txt
-  #         git config user.name "github-actions"
-  #         git config user.email "github-actions@github.com"
-  #         git add firmware-version.txt
-  #         git commit -m "chore: new firmware freight $VERSION"
-  #         git push

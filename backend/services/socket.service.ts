@@ -54,6 +54,18 @@ class SocketService {
       this.io.to(`user_${userId}`).emit('device_status_change', { deviceId, state });
     }
   };
+
+  publishEmergencyAlert(userId: number, payload: object) {
+    if (this.io) {
+      this.io.to(`user_${userId}`).emit('emergency_alert', payload);
+    }
+  }
+
+  publishVlmError(userId: number, payload: object) {
+    if (this.io) {
+      this.io.to(`user_${userId}`).emit('vlm_error', payload);
+    }
+  }
 }
 
 export default new SocketService();

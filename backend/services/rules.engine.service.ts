@@ -2,10 +2,13 @@ import { userRulesRepository, UserRuleWithDetails } from '../dal/user.rules.repo
 import { userDevicesActionsRepository } from '../dal/user.devices.actions.repository';
 import { userDevicesRepository } from '../dal/user.devices.repository';
 import { actionHubService } from './action.hub.service';
+import { vlmService } from './vlm.service';
 
 type ScheduleParams = { time?: string; days?: number[] };
 type StateParams = { user_device_action_id?: number; operator?: string; value?: string };
 type DeviceStatusParams = { user_device_id?: number; status?: string };
+type VlmResultParams = { user_device_action_id?: number; class_name?: string; metric?: 'count' | 'confidence'; operator?: string; value?: string };
+type VlmDecisionParams = { user_device_action_id?: number; decision?: string };
 
 class RulesEngineService {
 
@@ -80,6 +83,26 @@ class RulesEngineService {
       const target = parseFloat(params.value);
       if (isNaN(current) || isNaN(target)) return false;
       return this.compare(current, params.operator, target);
+    }
+
+    // vlm_result: compare detection count or confidence from cached VLM analysis
+    if (condition.condition_type === 'vlm_result') {
+      const p = condition.parameters as unknown as VlmResultParams;
+      if (!p.user_device_action_id || !p.class_name || !p.metric || !p.operator || p.value === undefined) return false;
+      const result = await vlmService.getCachedResult(p.user_device_action_id);
+      if (!result) return false;
+      const detection = result.detections.find(d => d.className.toLowerCase() === p.class_name!.toLowerCase());
+      if (!detection) return p.operator === '<' || p.operator === '<=' ? this.compare(0, p.operator, parseFloat(p.value)) : false;
+      const metric = p.metric === 'count' ? detection.count : detection.confidence;
+      return this.compare(metric, p.operator, parseFloat(p.value));
+    }
+
+    // vlm_decision: match the LLM/rule-based decision string
+    if (condition.condition_type === 'vlm_decision') {
+      const p = condition.parameters as unknown as VlmDecisionParams;
+      if (!p.user_device_action_id || !p.decision) return false;
+      const result = await vlmService.getCachedResult(p.user_device_action_id);
+      return result?.decision === p.decision;
     }
 
     return false;
