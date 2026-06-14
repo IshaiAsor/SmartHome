@@ -1,10 +1,18 @@
 /// <reference types="web-bluetooth" />
 
 import { HttpClient } from '@angular/common/http';
-import { Injectable } from '@angular/core';
+import { Injectable, inject } from '@angular/core';
+
+interface ProvisionTokenResponse {
+  userId: string;
+  provisioningToken: string;
+  server: string;
+  mqttPort: number;
+  provisioningCallbackUrl: string;
+  validateCACert: boolean;
+}
 import { environment } from 'src/environments/environment';
 import { from, Observable, Subject, switchMap, throwError } from 'rxjs';
-import { map } from 'rxjs/operators';
 
 export enum ProvisioningStep {
   BLE_PAIRING_READY = 'BLE_PAIRING_READY',
@@ -45,8 +53,7 @@ export interface ProvisioningProgress {
 export class ProvisioningService {
   private apiUrl = `${environment.apiUrl}`;
   private provisioningProgress$ = new Subject<ProvisioningProgress>();
-
-  constructor(private http: HttpClient) {}
+  private http = inject(HttpClient);
 
   // Public observable to track provisioning progress
   getProgressObservable(): Observable<ProvisioningProgress> {
@@ -94,9 +101,9 @@ export class ProvisioningService {
     const CHAR_UUID = 'abcdef01-1234-5678-1234-56789abcdef0';
 
     return this.http
-      .get(`${this.apiUrl}/api/provisioning/provision-token`)
+      .get<ProvisionTokenResponse>(`${this.apiUrl}/api/provisioning/provision-token`)
       .pipe(
-        switchMap((result: any) =>
+        switchMap((result) =>
           from(
             navigator.bluetooth.requestDevice({
               filters: [
@@ -139,9 +146,10 @@ export class ProvisioningService {
     validateCACert: boolean
   ): Observable<string> {
     return new Observable<string>((subscriber) => {
-      const listener = (event: any) => {
+      const listener = (event: Event) => {
         try {
-          const data = new TextDecoder().decode(event.target.value);
+          const dataView = (event.target as BluetoothRemoteGATTCharacteristic).value;
+          const data = new TextDecoder().decode(dataView ?? undefined);
           const parsedData = JSON.parse(data);
          // console.log('Received BLE notification:', parsedData);
           const step = this.mapResponseTypeToStep(parsedData.type);

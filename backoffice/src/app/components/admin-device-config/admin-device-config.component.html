@@ -19,7 +19,7 @@
               <span class="device-type">{{ device.type }}</span>
               <span class="device-version">v{{ device.version }}</span>
             </div>
-            <div class="device-actions" (click)="$event.stopPropagation()">
+            <div class="device-actions" (click)="$event.stopPropagation()" (keydown)="$event.stopPropagation()" tabindex="-1" role="group">
               <button mat-icon-button matTooltip="Edit" (click)="openDeviceTypeDialog(device)">
                 <mat-icon>edit</mat-icon>
               </button>

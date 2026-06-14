@@ -1,5 +1,5 @@
 import { HttpClient } from '@angular/common/http';
-import { Injectable } from '@angular/core';
+import { Injectable, inject } from '@angular/core';
 import { environment } from 'src/environments/environment.development';
 
 @Injectable({
@@ -7,8 +7,7 @@ import { environment } from 'src/environments/environment.development';
 })
 export class GoogleActionsTypesService {
   private apiUrl = `${environment.apiUrl}`;
-
-  constructor(private http: HttpClient) {}
+  private http = inject(HttpClient);
 
   getGoogleActionTypes() {
     return this.http.get<GoogleActionType[]>(`${this.apiUrl}/api/google/actions/types`);

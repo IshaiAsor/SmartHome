@@ -1,6 +1,6 @@
-import { Injectable, signal } from '@angular/core';
+import { Injectable, inject, signal } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
-import { switchMap, tap } from 'rxjs/operators';
+import { tap } from 'rxjs/operators';
 import { Router } from '@angular/router';
 import { environment } from 'src/environments/environment';
 import { Observable } from 'rxjs';
@@ -9,8 +9,8 @@ import { jwtDecode } from 'jwt-decode';
 export interface User {
   username: string;
   email?: string;
-  role?: any;
-  user_type?: any;
+  role?: string;
+  user_type?: string;
   profileImage?: string;
 }
 
@@ -18,11 +18,10 @@ export interface User {
 export class AuthService {
   private tokenKey = 'access_token';
   private apiUrl = `${environment.apiUrl}`;
+  private http = inject(HttpClient);
+  private router = inject(Router);
 
-  constructor(
-    private http: HttpClient,
-    private router: Router,
-  ) {
+  constructor() {
     const token = localStorage.getItem(this.tokenKey);
     if (token) {
       try {
@@ -33,6 +32,7 @@ export class AuthService {
       }
     }
   }
+
   currentUser = signal<User | null>(null);
 
   getCurrentUser() {
@@ -85,7 +85,6 @@ export class AuthService {
 
   private isTokenExpired(token: string): boolean {
     try {
-      // JWT is composed of 3 parts: header, payload, signature.
       const base64Url = token.split('.')[1];
       const base64 = base64Url.replace(/-/g, '+').replace(/_/g, '/');
       const jsonPayload = decodeURIComponent(
@@ -97,10 +96,9 @@ export class AuthService {
       );
 
       const payload = JSON.parse(jsonPayload);
-      // The 'exp' claim is in seconds, Date.now() is in milliseconds
       return payload.exp ? Math.floor(Date.now() / 1000) >= payload.exp : false;
-    } catch (e) {
-      return true; // If the token is malformed, consider it expired/invalid
+    } catch {
+      return true;
     }
   }
 }

@@ -7,6 +7,38 @@ import { SHARED_MATERIAL } from 'src/app/shared-ui';
 import { DeviceActionView, DeviceView } from 'src/app/services/device.mgmt.service';
 import { CreateRuleDto, UserRuleView } from 'src/app/services/user.rules.service';
 
+interface ConditionPrefill {
+  days?: number[];
+  time?: string;
+  user_device_id?: number | null;
+  value?: string;
+  status?: string;
+  user_device_action_id?: number | null;
+  operator?: string;
+}
+
+interface ActionPrefill {
+  user_device_action_id?: number | null;
+  target_state?: string;
+  delay_seconds?: number;
+}
+
+interface ConditionFormValue {
+  condition_type: string;
+  time?: string;
+  days?: boolean[];
+  device_id?: number;
+  value?: unknown;
+  user_device_action_id?: number;
+  operator?: string;
+}
+
+interface ActionFormValue {
+  user_device_action_id: number;
+  target_state: unknown;
+  delay_seconds: number;
+}
+
 export interface RuleEditorData {
   rule?: UserRuleView;
   actions: DeviceActionView[];
@@ -69,7 +101,7 @@ export class RuleEditorDialogComponent implements OnInit {
 
     if (rule) {
       for (const c of rule.conditions) {
-        this.addCondition(c.condition_type as any, c.parameters as any);
+        this.addCondition(c.condition_type as 'device_state' | 'threshold' | 'schedule' | 'device_status', c.parameters as ConditionPrefill);
       }
       for (const a of rule.actions) {
         this.addAction(a);
@@ -110,7 +142,7 @@ export class RuleEditorDialogComponent implements OnInit {
 
   // ── Form array mutations ─────────────────────────────────────────
 
-  addCondition(type: 'device_state' | 'threshold' | 'schedule' | 'device_status', prefill?: any): void {
+  addCondition(type: 'device_state' | 'threshold' | 'schedule' | 'device_status', prefill?: ConditionPrefill): void {
     let group: FormGroup;
     if (type === 'schedule') {
       const days = prefill?.days ?? [];
@@ -155,7 +187,7 @@ export class RuleEditorDialogComponent implements OnInit {
     return this.conditionsArray.at(conditionIndex).get('days') as FormArray;
   }
 
-  addAction(prefill?: any): void {
+  addAction(prefill?: ActionPrefill): void {
     this.actionsArray.push(this.fb.group({
       user_device_action_id: [prefill?.user_device_action_id ?? null, Validators.required],
       target_state: [prefill?.target_state ?? '', Validators.required],
@@ -185,7 +217,7 @@ export class RuleEditorDialogComponent implements OnInit {
       name: value.name,
       condition_operator: value.condition_operator,
       cooldown_seconds: value.cooldown_seconds,
-      conditions: value.conditions.map((c: any) => {
+      conditions: value.conditions.map((c: ConditionFormValue) => {
         if (c.condition_type === 'schedule') {
           const days = (c.days as boolean[]).map((checked, i) => checked ? i : -1).filter(i => i >= 0);
           return { condition_type: 'schedule', parameters: { time: c.time, days } };
@@ -199,7 +231,7 @@ export class RuleEditorDialogComponent implements OnInit {
           parameters: { user_device_action_id: c.user_device_action_id, operator: c.operator, value: String(c.value) },
         };
       }),
-      actions: value.actions.map((a: any) => ({
+      actions: value.actions.map((a: ActionFormValue) => ({
         user_device_action_id: a.user_device_action_id,
         target_state: String(a.target_state),
         delay_seconds: a.delay_seconds,

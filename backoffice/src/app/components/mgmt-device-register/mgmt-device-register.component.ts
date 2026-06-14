@@ -1,4 +1,4 @@
-import { Component, Inject, OnInit, OnDestroy } from '@angular/core';
+import { Component, inject, OnInit, OnDestroy } from '@angular/core';
 import { MAT_DIALOG_DATA, MatDialogRef } from '@angular/material/dialog';
 import { DeviceView } from 'src/app/services/device.mgmt.service';
 import { ProvisioningService, ProvisioningStep, ProvisioningProgress } from 'src/app/services/provisioning.service';
@@ -13,18 +13,16 @@ import { SHARED_MATERIAL } from 'src/app/shared-ui';
   styleUrls: ['./mgmt-device-register.component.css']
 })
 export class MgmtDeviceRegisterComponent implements OnInit, OnDestroy {
+  dialogRef = inject(MatDialogRef<MgmtDeviceRegisterComponent>);
+  data: DeviceView = inject(MAT_DIALOG_DATA);
+  private provisioningService = inject(ProvisioningService);
+
   isProvisioning = false;
   currentStep: ProvisioningStep | null = null;
   provisioningSteps: ProvisioningProgress[] = [];
   error: string | null = null;
-  
-  private destroy$ = new Subject<void>();
 
-constructor(
-    public dialogRef: MatDialogRef<MgmtDeviceRegisterComponent>,
-    @Inject(MAT_DIALOG_DATA) public data: DeviceView,
-    private provisioningService: ProvisioningService
-  ) {}
+  private destroy$ = new Subject<void>();
 
   ngOnInit(): void {
     // Subscribe to provisioning progress updates

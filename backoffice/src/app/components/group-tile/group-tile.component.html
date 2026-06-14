@@ -1,4 +1,4 @@
-<div class="group-tile" (click)="expand.emit()">
+<div class="group-tile" (click)="expand.emit()" (keydown.enter)="expand.emit()" tabindex="0" role="button">
     <div class="group-header">
         <mat-icon class="group-folder-icon">folder</mat-icon>
         <span class="group-name">{{ group().name }}</span>

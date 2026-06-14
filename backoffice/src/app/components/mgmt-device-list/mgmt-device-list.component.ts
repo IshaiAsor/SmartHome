@@ -114,7 +114,7 @@ export class MgmtDeviceListComponent implements OnInit {
   addDevice() {
     const dialogRef = this.dialog.open(MgmtDeviceRegisterComponent, {});
 
-    dialogRef.afterClosed().subscribe((result) => {
+    dialogRef.afterClosed().subscribe(() => {
       this.loadDevices();
     });
   }

@@ -1,12 +1,14 @@
-import { Component, OnInit } from '@angular/core';
-import { CommonModule } from '@angular/common';
-import { FormsModule } from '@angular/forms';
+import { Component, inject, OnInit } from '@angular/core';
 import { Router } from '@angular/router';
 import { AuthService } from '../../services/auth.service';
 import { HttpClient } from '@angular/common/http';
 import { environment } from 'src/environments/environment';
 import { SHARED_MATERIAL } from 'src/app/shared-ui';
-// import * as google from 'google-one-tap';
+
+interface GoogleOAuthResponse {
+  code: string;
+  error?: string;
+}
 
 @Component({
   selector: 'app-login',
@@ -16,30 +18,29 @@ import { SHARED_MATERIAL } from 'src/app/shared-ui';
   styleUrls: ['./login.component.css'],
 })
 export class LoginComponent implements OnInit {
-  declare googleClient: any;
+  declare googleClient: { requestCode: () => void };
   username = '';
   password = '';
   error = '';
   private apiUrl = `${environment.apiUrl}`;
 
-  constructor(
-    private authService: AuthService,
-    private router: Router,
-    private http: HttpClient,
-  ) {}
+  private authService = inject(AuthService);
+  private router = inject(Router);
+  private http = inject(HttpClient);
+
   ngOnInit() {
     window.onload = () => {
-      // @ts-ignore
+      // @ts-expect-error google is loaded via script tag
       this.googleClient = google.accounts.oauth2.initCodeClient({
         client_id: environment.googleClientId,
-        scope: 'openid email profile', // Add more scopes here if you need Google APIs
+        scope: 'openid email profile',
         ux_mode: 'popup',
-        callback: (response: any) => this.handleAuthCode(response),
+        callback: (response: GoogleOAuthResponse) => this.handleAuthCode(response),
       });
     };
   }
 
-  handleAuthCode(response: any) {
+  handleAuthCode(response: GoogleOAuthResponse) {
     if (response.error) {
       this.error = 'Google authentication was cancelled or failed.';
       console.error('Google login failed', response.error);
@@ -49,7 +50,7 @@ export class LoginComponent implements OnInit {
     this.authService.loginWithGoogle(response.code).subscribe({
       next: () => this.loginSuccess(),
       error: (err) => {
-        this.error = err?.error?.message || 'Google login failed. Please try again.';
+        this.error = (err as { error?: { message?: string } })?.error?.message || 'Google login failed. Please try again.';
         console.error('Google login error:', err);
       },
     });
@@ -63,7 +64,7 @@ export class LoginComponent implements OnInit {
     this.authService.loginWithUserPass(this.username, this.password).subscribe({
       next: () => this.loginSuccess(),
       error: (err) => {
-        this.error = err?.error?.message || 'Invalid username or password.';
+        this.error = (err as { error?: { message?: string } })?.error?.message || 'Invalid username or password.';
         console.error('Login error:', err);
       },
     });

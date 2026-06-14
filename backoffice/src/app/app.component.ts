@@ -1,7 +1,7 @@
 import { Component, inject } from '@angular/core';
 import { RouterModule } from "@angular/router";   
 import { SHARED_MATERIAL } from './shared-ui';
-import { AuthService, User } from './services/auth.service';
+import { AuthService } from './services/auth.service';
 @Component({
   imports: [RouterModule,SHARED_MATERIAL],
   standalone: true,
@@ -12,9 +12,6 @@ import { AuthService, User } from './services/auth.service';
 export class AppComponent {
   title = 'backoffice';
   authService = inject(AuthService);
-
-  constructor() {
-  }
 
   logout() {
     this.authService.logout();

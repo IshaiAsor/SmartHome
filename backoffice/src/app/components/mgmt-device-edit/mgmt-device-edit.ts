@@ -1,4 +1,4 @@
-import { Component, Inject } from '@angular/core';
+import { Component, inject } from '@angular/core';
 import { MAT_DIALOG_DATA, MatDialogRef } from '@angular/material/dialog';
 import { SHARED_MATERIAL } from 'src/app/shared-ui';
 
@@ -9,10 +9,8 @@ import { SHARED_MATERIAL } from 'src/app/shared-ui';
   styleUrl: './mgmt-device-edit.css',
 })
 export class MgmtDeviceEdit {
- constructor(
-    public dialogRef: MatDialogRef<MgmtDeviceEdit>,
-    @Inject(MAT_DIALOG_DATA) public data: { deviceName: string }
-  ) {}
+  dialogRef = inject(MatDialogRef<MgmtDeviceEdit>);
+  data: { deviceName: string } = inject(MAT_DIALOG_DATA);
 
   onCancel(): void {
     this.dialogRef.close();

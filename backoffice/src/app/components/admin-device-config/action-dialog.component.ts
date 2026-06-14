@@ -345,7 +345,7 @@ export class ActionDialogComponent implements OnInit, OnDestroy {
   private rebuildPinForm(implType: string) {
     const slots = PIN_BLUEPRINTS[implType] ?? [];
     this.currentBlueprint = slots;
-    const controls: Record<string, any> = {};
+    const controls: Record<string, [number | null, ValidatorFn[]]> = {};
     slots.forEach((slot, i) => {
       const existing = this.data?.pins?.[i]?.pinNumber ?? null;
       controls[slot.key] = [existing, [Validators.required, Validators.min(1), Validators.max(48), pinInUseValidator(this.dialogData.usedPins)]];

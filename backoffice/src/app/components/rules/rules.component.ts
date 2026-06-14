@@ -92,7 +92,7 @@ export class RulesComponent implements OnInit {
 
   conditionSummary(rule: UserRuleView): string {
     return rule.conditions.map((c) => {
-      const p = c.parameters as any;
+      const p = c.parameters as { time?: string; user_device_id?: number; value?: string; status?: string; user_device_action_id?: number; operator?: string };
       if (c.condition_type === 'schedule') return `At ${p.time}`;
       if (c.condition_type === 'device_state' || c.condition_type === 'device_status') {
         const device = this.userDevices.find((d) => d.id === p.user_device_id);

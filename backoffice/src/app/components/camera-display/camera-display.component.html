@@ -1,4 +1,4 @@
-<div class="camera-display" (click)="openFullscreen()" [matTooltip]="'Click to expand'">
+<div class="camera-display" (click)="openFullscreen()" (keydown.enter)="openFullscreen()" tabindex="0" role="button" [matTooltip]="'Click to expand'">
   @if (action().state) {
   <img [src]="'data:image/jpeg;base64,' + action().state" alt="Camera" class="camera-img" />
   } @else {

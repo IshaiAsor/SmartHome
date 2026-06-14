@@ -62,7 +62,7 @@ export class GroupBottomSheetComponent implements OnInit {
 
     this.socketService.onDeviceOnlineStatusChange()
       .pipe(takeUntilDestroyed(this.destroyRef))
-      .subscribe((res: any) => {
+      .subscribe((res: unknown) => {
         const { deviceId, state } = res as { deviceId: number; state: boolean };
         this.actions.filter(a => a.deviceId === deviceId).forEach(a => a.online = state);
       });

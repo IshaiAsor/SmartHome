@@ -13,7 +13,7 @@ import { MatDialog, MAT_DIALOG_DATA, MatDialogRef } from '@angular/material/dial
         <mat-icon>close</mat-icon>
       </button>
       @if (data.action.state) {
-        <img [src]="'data:image/jpeg;base64,' + data.action.state" class="cam-fs-img" />
+        <img [src]="'data:image/jpeg;base64,' + data.action.state" alt="Camera" class="cam-fs-img" />
       } @else {
         <div class="cam-fs-placeholder">
           <span class="material-symbols-outlined">photo_camera</span>

@@ -7,8 +7,8 @@ import {
   AdminDeviceType,
   AdminDeviceAction,
 } from 'src/app/services/admin.device.config.service';
-import { GoogleActionsTypesService, GoogleActionType } from 'src/app/services/google.actions.types.service';
-import { GoogleActionsTraitsService, GoogleActionTrait } from 'src/app/services/google.actions.traits.service';
+import { GoogleActionsTypesService } from 'src/app/services/google.actions.types.service';
+import { GoogleActionsTraitsService } from 'src/app/services/google.actions.traits.service';
 import { DeviceTypeDialogComponent } from './device-type-dialog.component';
 import { ActionDialogComponent, ActionDialogData } from './action-dialog.component';
 import { ConfirmDialogComponent, ConfirmDialogData } from './confirm-dialog.component';
@@ -138,9 +138,10 @@ export class AdminDeviceConfigComponent implements OnInit {
     });
   }
 
-  private handleActionError(err: any): void {
-    const serverMsg = err?.error?.error;
-    const msg = (err?.status === 409 || err?.status === 400) && serverMsg
+  private handleActionError(err: unknown): void {
+    const e = err as { error?: { error?: string }; status?: number };
+    const serverMsg = e?.error?.error;
+    const msg = (e?.status === 409 || e?.status === 400) && serverMsg
       ? serverMsg
       : 'Failed to save action';
     this.snack.open(msg, 'Close', { duration: 4000 });
@@ -161,6 +162,6 @@ export class AdminDeviceConfigComponent implements OnInit {
   }
 
   pinsLabel(action: AdminDeviceAction): string {
-    return action.pins?.map((p: any) => `GPIO${p.pinNumber}/${p.pinMode}`).join(', ') || '—';
+    return action.pins?.map(p => `GPIO${p.pinNumber}/${p.pinMode}`).join(', ') || '—';
   }
 }
