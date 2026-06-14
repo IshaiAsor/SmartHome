@@ -1,6 +1,6 @@
 import { TestBed } from '@angular/core/testing';
 
-import { DeviceService } from '../components/device-list/device.service';
+import { DeviceService } from './device.service';
 
 describe('DeviceService', () => {
   let service: DeviceService;
