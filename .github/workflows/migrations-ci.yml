@@ -47,7 +47,7 @@ jobs:
           platforms: linux/amd64,linux/arm64
           push: true
           tags: |
-            ghcr.io/ishaiasor/smarthome-migrations:${{ steps.tag_version.outputs.new_tag }}
-            ghcr.io/ishaiasor/smarthome-migrations:latest
+            ghcr.io/ishaiasor/lattice-migrations:${{ steps.tag_version.outputs.new_tag }}
+            ghcr.io/ishaiasor/lattice-migrations:latest
           cache-from: type=gha
           cache-to: type=gha,mode=max

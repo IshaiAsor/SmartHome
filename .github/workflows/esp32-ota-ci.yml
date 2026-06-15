@@ -188,8 +188,8 @@ jobs:
           push: true
           platforms: linux/amd64,linux/arm64
           tags: |
-            ghcr.io/ishaiasor/smarthome-firmware:${{ needs.generate-firmware-matrix.outputs.new_tag }}
-            ghcr.io/ishaiasor/smarthome-firmware:latest
+            ghcr.io/ishaiasor/lattice-firmware:${{ needs.generate-firmware-matrix.outputs.new_tag }}
+            ghcr.io/ishaiasor/lattice-firmware:latest
           build-args: |
             VERSION=${{ needs.generate-firmware-matrix.outputs.new_tag }}
 

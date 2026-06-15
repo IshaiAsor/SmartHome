@@ -1,5 +1,5 @@
 {
-  "name": "iot-smart-home",
+  "name": "lattice",
   "version": "1.0.0",
   "private": true,
   "workspaces": [

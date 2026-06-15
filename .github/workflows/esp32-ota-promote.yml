@@ -13,11 +13,11 @@ jobs:
     steps:
       - name: Download from Staging
         run: |
-          curl -L https://ota.iotiotstg.duckdns.org/download/ESP32_SmartOutlet/${{ github.event.inputs.version }}.bin -o firmware.bin
+          curl -L https://ota.lattice-iot-stg.duckdns.org/download/ESP32_SmartOutlet/${{ github.event.inputs.version }}.bin -o firmware.bin
 
       - name: Upload to Production OTA Manager
         run: |
-          curl -X POST https://ota.iotiot.duckdns.org/release \
+          curl -X POST https://ota.lattice-iot.duckdns.org/release \
             -F "deviceType=ESP32_SmartOutlet" \
             -F "version=${{ github.event.inputs.version }}" \
             -F "releaseNotes=Promoted from Staging: ${{ github.event.inputs.version }}" \
