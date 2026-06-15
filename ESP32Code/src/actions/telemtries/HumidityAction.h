@@ -16,12 +16,19 @@ public:
         return slots;
     }
 
+    static const char* googleActionType() { return "action.devices.types.SENSOR"; }
+
     static const GoogleTraitDef* supportedTraits() {
         static const GoogleTraitDef traits[] = {
             { "action.devices.traits.HumiditySetting", "HumiditySetting" },
             { nullptr }
         };
         return traits;
+    }
+
+    static CapabilityDescriptor capability() {
+        return { "humidity", "Humidity Sensor", "HumidityAction", "telemetry", "humidity",
+                 googleActionType(), supportedTraits(), 2000, blueprint() };
     }
 
 private:

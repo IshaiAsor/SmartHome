@@ -1,5 +1,5 @@
 import express from 'express';
-import { deviceMgmtService } from '../services/device.mgmt.service';
+import { deviceMgmtService, BlueprintView } from '../services/device.mgmt.service';
 import mqttService from '../services/mqtt.service';
 import { verifyToken } from '../middlewares/auth.middleware';
 import { exceptionHandler } from '../middlewares/exception.middleware';
@@ -27,6 +27,34 @@ router.delete('/:deviceId', async (req, res) => {
   const userId = req.user.id;
   const deviceId = parseInt(req.params.deviceId);
   await deviceMgmtService.deleteDevice(userId, deviceId);
+  res.status(204).send();
+});
+
+router.get('/:deviceId/blueprints', async (req, res) => {
+  const userId = req.user.id;
+  const deviceId = parseInt(req.params.deviceId);
+  const blueprints = await deviceMgmtService.getDeviceBlueprints(userId, deviceId);
+  res.json(blueprints);
+});
+
+router.post('/:deviceId/actions/from-blueprint', async (req, res) => {
+  const userId = req.user.id;
+  const deviceId = parseInt(req.params.deviceId);
+  const { blueprintId, telemetry_interval_ms, pins } = req.body;
+  const action = await deviceMgmtService.activateBlueprintAction(userId, deviceId, blueprintId, telemetry_interval_ms ?? null, pins ?? undefined);
+  res.status(201).json(action);
+});
+
+router.patch('/:deviceId/actions/:userActionId', async (req, res) => {
+  const userId = req.user.id;
+  const deviceId = parseInt(req.params.deviceId);
+  const userActionId = parseInt(req.params.userActionId);
+  const { name, telemetry_interval_ms, pins } = req.body;
+  await deviceMgmtService.updateBlueprintAction(userId, deviceId, userActionId, {
+    name,
+    telemetryIntervalMs: telemetry_interval_ms,
+    pins,
+  });
   res.status(204).send();
 });
 

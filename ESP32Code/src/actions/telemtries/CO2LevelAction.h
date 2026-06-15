@@ -15,12 +15,19 @@ public:
         return slots;
     }
 
+    static const char* googleActionType() { return "action.devices.types.SENSOR"; }
+
     static const GoogleTraitDef* supportedTraits() {
         static const GoogleTraitDef traits[] = {
             { "action.devices.traits.CO2Level", "CO2Level" },
             { nullptr }
         };
         return traits;
+    }
+
+    static CapabilityDescriptor capability() {
+        return { "co2_level", "CO2 Sensor", "CO2LevelAction", "telemetry", "co2_level",
+                 googleActionType(), supportedTraits(), 5000, blueprint() };
     }
 
 private:

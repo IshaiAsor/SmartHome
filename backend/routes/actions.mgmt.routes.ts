@@ -27,4 +27,11 @@ router.patch('/:actionId', async (req, res) => {
   res.status(204).send();
 });
 
+router.delete('/:actionId', async (req, res) => {
+  const userId = req.user.id;
+  const actionId = parseInt(req.params.actionId);
+  await deviceActionsService.deleteAction(userId, actionId);
+  res.status(204).send();
+});
+
 export default router;

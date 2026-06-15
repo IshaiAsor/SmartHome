@@ -17,6 +17,8 @@ public:
         return slots;
     }
 
+    static const char* googleActionType() { return "action.devices.types.FAN"; }
+
     static const GoogleTraitDef* supportedTraits() {
         static const GoogleTraitDef traits[] = {
             { "action.devices.traits.OnOff",     "OnOff"     },
@@ -25,6 +27,11 @@ public:
             { nullptr }
         };
         return traits;
+    }
+
+    static CapabilityDescriptor capability() {
+        return { "fan", "Fan", "OneDirectionalMotorAction", "command", "fan",
+                 googleActionType(), supportedTraits(), 0, blueprint() };
     }
 
 private:

@@ -2,10 +2,8 @@
 #include <vector>
 #include <string>
 #include <Arduino.h>
-#include <services/mqtt.h>
 #include <OneWire.h>
 #include <DallasTemperature.h>
-#include <functional>
 #include "actions/telemtries/BaseTelemtryAction.h"
 
 class TemperatureAction : public BaseTelemetryAction
@@ -19,6 +17,8 @@ public:
         return slots;
     }
 
+    static const char* googleActionType() { return "action.devices.types.SENSOR"; }
+
     static const GoogleTraitDef* supportedTraits() {
         static const GoogleTraitDef traits[] = {
             { "action.devices.traits.TemperatureSetting", "TemperatureSetting" },
@@ -26,6 +26,11 @@ public:
             { nullptr }
         };
         return traits;
+    }
+
+    static CapabilityDescriptor capability() {
+        return { "temperature", "Temperature Sensor", "TemperatureAction", "telemetry", "sensor1",
+                 googleActionType(), supportedTraits(), 10000, blueprint() };
     }
 
 private:

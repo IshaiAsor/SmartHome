@@ -19,12 +19,19 @@ public:
         return slots;
     }
 
+    static const char* googleActionType() { return "action.devices.types.CAMERA"; }
+
     static const GoogleTraitDef* supportedTraits() {
         static const GoogleTraitDef traits[] = {
             { "action.devices.traits.CameraStream", "CameraStream" },
             { nullptr }
         };
         return traits;
+    }
+
+    static CapabilityDescriptor capability() {
+        return { "camera_http_stream", "Camera (Live Stream HTTP)", "LiveStreamHttpAction", "telemetry",
+                 "camera_http_stream", googleActionType(), supportedTraits(), 33, blueprint() };
     }
 
 private:

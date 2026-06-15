@@ -14,12 +14,19 @@ public:
         return slots;
     }
 
+    static const char* googleActionType() { return "action.devices.types.SENSOR"; }
+
     static const GoogleTraitDef* supportedTraits() {
         static const GoogleTraitDef traits[] = {
             { "action.devices.traits.TdsLevel", "TdsLevel" },
             { nullptr }
         };
         return traits;
+    }
+
+    static CapabilityDescriptor capability() {
+        return { "tds_level", "TDS Sensor", "TdsLevelAction", "telemetry", "tds_level",
+                 googleActionType(), supportedTraits(), 5000, blueprint() };
     }
 
 private:

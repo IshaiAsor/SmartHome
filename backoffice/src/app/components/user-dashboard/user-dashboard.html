@@ -22,7 +22,7 @@
         <div class="device-card" [ngClass]="item.action!.online ? 'card-enabled' : 'card-disabled'">
             <div class="card-header">
                 <span class="material-symbols-outlined device-icon">
-                    {{ iconForType(item.action!.googleType?.value) }}
+                    {{ iconForAction(item.action!) }}
                 </span>
                 <span class="card-name">{{ item.action!.name }}</span>
                 <span class="header-spacer"></span>

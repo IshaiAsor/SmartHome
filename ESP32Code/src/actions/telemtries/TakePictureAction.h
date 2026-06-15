@@ -19,12 +19,19 @@ public:
         return slots;
     }
 
+    static const char* googleActionType() { return "action.devices.types.CAMERA"; }
+
     static const GoogleTraitDef* supportedTraits() {
         static const GoogleTraitDef traits[] = {
             { "action.devices.traits.CameraStream", "CameraStream" },
             { nullptr }
         };
         return traits;
+    }
+
+    static CapabilityDescriptor capability() {
+        return { "camera_ws_capture", "Camera (Snapshot WS)", "TakePictureAction", "telemetry",
+                 "camera_ws_capture", googleActionType(), supportedTraits(), 1000, blueprint() };
     }
 
 private:

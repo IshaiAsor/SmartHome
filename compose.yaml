@@ -12,12 +12,13 @@ services:
     environment:
       - EMQX_NODE_NAME=emqx@127.0.0.1
       # ----------------------------------------
-      # Listeners (WSS Configuration)
+      # Listeners
       - EMQX_LISTENERS__SSL__DEFAULT__BIND=8883
       - EMQX_LISTENERS__SSL__DEFAULT__SSL_OPTIONS__CACERTFILE=/opt/emqx/etc/certs/ca.pem
       - EMQX_LISTENERS__SSL__DEFAULT__SSL_OPTIONS__CERTFILE=/opt/emqx/etc/certs/server.pem
       - EMQX_LISTENERS__SSL__DEFAULT__SSL_OPTIONS__KEYFILE=/opt/emqx/etc/certs/server.key
       - EMQX_LISTENERS__SSL__DEFAULT__SSL_OPTIONS__VERIFY=verify_none
+      - EMQX_LISTENERS__WSS__DEFAULT__ENABLE=false
       # ----------------------------------------
       # Auth 1: JWT (For ESP Devices)
       # ----------------------------------------
@@ -31,7 +32,7 @@ services:
       # ----------------------------------------
       - EMQX_AUTHENTICATION__2__MECHANISM=password_based
       - EMQX_AUTHENTICATION__2__BACKEND=postgresql
-      - EMQX_AUTHENTICATION__2__SERVER=${EMQX_DB_SERVER}
+      - EMQX_AUTHENTICATION__2__SERVER=postgres:5432
       - EMQX_AUTHENTICATION__2__DATABASE=${DB_NAME:-emqx_data}
       - EMQX_AUTHENTICATION__2__USERNAME=${EMQX_DB_USERNAME}
       - EMQX_AUTHENTICATION__2__PASSWORD=${EMQX_DB_PASSWORD}
@@ -121,13 +122,16 @@ services:
     environment:
       - PORT=3000
       - MQTT_INTERNAL_HOST=emqx
-      - MQTT_PORT=1883
+      - MQTT_SERVER_NAME=emqx
+      - MQTT_PORT=8883
+      - MQTT_CA_CERT_PATH=/app/certs/ca.pem
       - MQTT_VALIDATE_CERT=false
       - MQTT_APP_USERNAME=${MQTT_APP_USERNAME}
       - MQTT_APP_PASSWORD=${MQTT_APP_PASSWORD}
       - FIRMWARE_PATH=/app/firmware
     volumes:
       - ./firmware-storage:/app/firmware
+      - ./certs:/app/certs:ro
     depends_on:
       - emqx
     restart: always

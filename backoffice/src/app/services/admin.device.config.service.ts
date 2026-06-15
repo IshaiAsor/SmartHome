@@ -10,6 +10,20 @@ export interface AdminDeviceType {
   default_name: string;
 }
 
+export interface DeviceCapabilityBlueprint {
+  id: number;
+  device_id: number;
+  capability_key: string;
+  label: string;
+  implementation_type: string;
+  mqtt_action_type: string;
+  mqtt_action_name: string;
+  configurable_pins: { key: string; label: string; mode: string }[];
+  min_telemetry_interval_ms: number | null;
+  google_action_type: string | null;
+  google_traits: string[] | null;
+}
+
 export interface AdminDeviceAction {
   id: number;
   device_id: number;
@@ -25,7 +39,7 @@ export interface AdminDeviceAction {
 
 @Injectable({ providedIn: 'root' })
 export class AdminDeviceConfigService {
-  private base = `${environment.apiUrl}/api/admin/device-config`;
+  private base = `${environment.apiUrl}/api/device-config`;
   private http = inject(HttpClient);
 
   // Device types
@@ -43,6 +57,11 @@ export class AdminDeviceConfigService {
 
   deleteDeviceType(id: number): Observable<void> {
     return this.http.delete<void>(`${this.base}/devices/${id}`);
+  }
+
+  // Capability blueprints (device-reported, read-only)
+  getBlueprints(deviceId: number): Observable<DeviceCapabilityBlueprint[]> {
+    return this.http.get<DeviceCapabilityBlueprint[]>(`${this.base}/devices/${deviceId}/blueprints`);
   }
 
   // Actions

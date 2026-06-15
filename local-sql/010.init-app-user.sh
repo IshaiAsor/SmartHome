@@ -1,4 +1,4 @@
-﻿#!/bin/sh
+#!/bin/sh
 set -e
 
 # This script runs as the POSTGRES_USER (usually 'postgres')
@@ -31,6 +31,10 @@ psql -v ON_ERROR_STOP=1 --username "$POSTGRES_USER" --dbname "$POSTGRES_DB" <<-E
     ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT USAGE, SELECT ON SEQUENCES TO ${BACKEND_DB_USER};
     ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT SELECT ON TABLES TO ${EMQX_DB_USERNAME};
 
+    GRANT SELECT, INSERT, UPDATE, DELETE ON ALL TABLES IN SCHEMA public TO ${BACKEND_DB_USER};
+    GRANT USAGE, SELECT ON ALL SEQUENCES IN SCHEMA public TO ${BACKEND_DB_USER};
+    GRANT SELECT ON ALL TABLES IN SCHEMA public TO ${EMQX_DB_USERNAME};
+
     -- 5. Backward compatibility for roles hardcoded in migrations (app_user, emqx)
     DO \$$
     BEGIN
@@ -43,10 +47,6 @@ psql -v ON_ERROR_STOP=1 --username "$POSTGRES_USER" --dbname "$POSTGRES_DB" <<-E
     END
     \$$;
 
-    GRANT SELECT, INSERT, UPDATE, DELETE ON ALL TABLES IN SCHEMA public TO ${BACKEND_DB_USER};
-    GRANT USAGE, SELECT ON ALL SEQUENCES IN SCHEMA public TO ${BACKEND_DB_USER};
-    GRANT SELECT ON ALL TABLES IN SCHEMA public TO ${EMQX_DB_USERNAME};
-    
     -- Also grant to fallback roles if they exist
     DO \$$
     BEGIN

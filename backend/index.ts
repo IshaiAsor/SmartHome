@@ -22,8 +22,6 @@ import cameraRoutes from './routes/camera.routes';
 import vlmRoutes from './routes/vlm.routes';
 import emergencyRoutes from './routes/emergency.routes';
 import { rulesEngineService } from './services/rules.engine.service';
-import { vlmService } from './services/vlm.service';
-import { vlmRepository } from './dal/vlm.repository';
 import { sensorHistoryRepository } from './dal/sensor.history.repository';
 import cron from 'node-cron';
 import http from 'http';
@@ -38,7 +36,7 @@ wsStreamService.init(server);
 socketService.init(server);
 
 // Pre-parser debug logging
-app.use((req, res, next) => {
+app.use((req, _res, next) => {
   console.log(`[${new Date().toISOString()}] DEBUG: ${req.method} ${req.url}`);
   next();
 });
@@ -49,7 +47,7 @@ app.use(bodyParser.urlencoded({ extended: true }));
 app.use(bodyParser.text({ type: '*/*' })); // Catch everything else as text
 
 // Post-parser debug logging
-app.use((req, res, next) => {
+app.use((req, _res, next) => {
   if (req.method === 'POST') {
     console.log(`[${new Date().toISOString()}] DEBUG: Parsed Body:`, JSON.stringify(req.body));
   }
@@ -66,7 +64,7 @@ app.use('/api/google/actions/traits', googleActionsTraitsRoutes);
 app.use('/api/google/smarthome', googleSmartHomeRoutes);
 app.use('/api/device', deviceConfigurationRoutes);
 app.use('/api/rules', userRulesRoutes);
-app.use('/api/admin/device-config', adminDeviceConfigRoutes);
+app.use('/api/device-config', adminDeviceConfigRoutes);
 app.use('/api/camera', cameraRoutes);
 app.use('/api/vlm', vlmRoutes);
 app.use('/api/emergency', emergencyRoutes);
@@ -79,13 +77,13 @@ if (fs.existsSync(publicPath)) {
   console.log(`✅ Serving static files from: ${publicPath}`);
   app.use(express.static(publicPath));
 
-  app.use((req: express.Request, res: express.Response) => {
+  app.use((_req: express.Request, res: express.Response) => {
     res.sendFile(path.join(publicPath, 'index.html'));
   });
 } else {
   console.log('ℹ️ Static "public" folder not found. Running in API-only mode.');
 
-  app.get('/', (req, res) => {
+  app.get('/', (_req, res) => {
     res.send('Smart Home API is running. (Angular UI not found in dist/public)');
   });
 }
@@ -94,24 +92,6 @@ async function startServer() {
   redisService.connect();
   cron.schedule('* * * * *', () => rulesEngineService.evaluateScheduledRules());
 
-  // VLM interval analysis — checks each DeviceVlmConfig every 10s against its configured interval
-  setInterval(async () => {
-    try {
-      const configs = await vlmRepository.getEnabledConfigs();
-      for (const cfg of configs) {
-        const elapsed = cfg.last_analyzed_at
-          ? (Date.now() - new Date(cfg.last_analyzed_at).getTime()) / 1000
-          : Infinity;
-        if (elapsed >= cfg.analysis_interval_sec) {
-          vlmService.runAnalysis(cfg).catch(err =>
-            console.error('[VLM] Analysis error:', err instanceof Error ? err.message : err)
-          );
-        }
-      }
-    } catch (err) {
-      console.error('[VLM] Interval job error:', err);
-    }
-  }, 10_000);
 
   // Prune sensor history older than 30 days (runs daily at midnight)
   cron.schedule('0 0 * * *', () =>

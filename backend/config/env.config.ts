@@ -39,6 +39,7 @@ export interface EnvConfig {
   redis: RedidConfig;
   Jwt: JwtConfig;
   rateLimit: RateLimitConfig;
+  ollama: OllamaConfig;
 }
 
 export interface JwtConfig {
@@ -64,6 +65,10 @@ export class RedidConfig {
   password?: string;
 }
 
+export interface OllamaConfig {
+  baseUrl: string;
+}
+
 const config: EnvConfig = {
   baseUrl: process.env.BASE_URL || 'http://localhost:3000',
   port: +(process.env.PORT || 3000),
@@ -72,7 +77,7 @@ const config: EnvConfig = {
     internalHost: process.env.MQTT_INTERNAL_HOST || process.env.MQTT_SERVER_NAME,
     username: process.env.MQTT_APP_USERNAME,
     password: process.env.MQTT_APP_PASSWORD,
-    port: process.env.MQTT_PORT ? parseInt(process.env.MQTT_PORT) : undefined,
+    port: process.env.MQTT_PORT ? parseInt(process.env.MQTT_PORT) : 1883,
     caCertPath: process.env.MQTT_CA_CERT_PATH || '',
     validateCert: process.env.MQTT_VALIDATE_CERT === 'true',
   },
@@ -137,6 +142,9 @@ const config: EnvConfig = {
     limit: process.env.RATE_LIMIT_MAX_REQUESTS
       ? parseInt(process.env.RATE_LIMIT_MAX_REQUESTS)
       : 150, // Default to 150 requests per windowMs
+  },
+  ollama: {
+    baseUrl: process.env.OLLAMA_BASE_URL ?? 'http://ollama-api.iot-shared.svc.cluster.local:11434',
   },
 };
 

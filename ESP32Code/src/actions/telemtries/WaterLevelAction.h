@@ -14,12 +14,19 @@ public:
         return slots;
     }
 
+    static const char* googleActionType() { return "action.devices.types.SENSOR"; }
+
     static const GoogleTraitDef* supportedTraits() {
         static const GoogleTraitDef traits[] = {
             { "action.devices.traits.WaterLevel", "WaterLevel" },
             { nullptr }
         };
         return traits;
+    }
+
+    static CapabilityDescriptor capability() {
+        return { "water_level", "Water Level Sensor", "WaterLevelAction", "telemetry", "water_level",
+                 googleActionType(), supportedTraits(), 10000, blueprint() };
     }
 
 private:

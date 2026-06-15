@@ -15,6 +15,8 @@ public:
         return slots;
     }
 
+    static const char* googleActionType() { return "action.devices.types.OUTLET"; }
+
     static const GoogleTraitDef* supportedTraits() {
         static const GoogleTraitDef traits[] = {
             { "action.devices.traits.OnOff",     "OnOff"     },
@@ -24,6 +26,11 @@ public:
             { nullptr }
         };
         return traits;
+    }
+
+    static CapabilityDescriptor capability() {
+        return { "outlet", "Outlet", "OutletCommandAction", "command", "outlet",
+                 googleActionType(), supportedTraits(), 0, blueprint() };
     }
 
 private:

@@ -1,6 +1,7 @@
 #pragma once
 #include <Arduino.h>
 #include <WiFiClient.h>
+#include <WiFiClientSecure.h>
 #include <PubSubClient.h>
 #include <Preferences.h>
 #include <ArduinoJson.h>
@@ -14,7 +15,7 @@ class MqttService
 {
 private:
     const char *root_ca = certificate_root;
-    WiFiClientSecure &espClient;
+    Client &espClient;
     PubSubClient *client = nullptr;
     PreferencesManagerService prefService;
     JwtService &jwtService;
@@ -24,10 +25,13 @@ private:
     OtaService *otaService = nullptr;
 
 public:
-    MqttService(WiFiClientSecure &espClient, JwtService &jwtService) : espClient(espClient), jwtService(jwtService)
+    MqttService(Client &espClient, JwtService &jwtService) : espClient(espClient), jwtService(jwtService)
     {
-        espClient.setCACert(root_ca);
-        espClient.setHandshakeTimeout(10000);
+#ifndef ENV_TEST
+        WiFiClientSecure &secureCli = static_cast<WiFiClientSecure &>(espClient);
+        secureCli.setCACert(root_ca);
+        secureCli.setHandshakeTimeout(10000);
+#endif
         client = new PubSubClient(espClient);
 #ifdef HAS_CAMERA
         client->setBufferSize(65535);
@@ -47,8 +51,11 @@ public:
 
     bool testMqtt(MqttCredentials *creds, JwtToken *token)
     {
-        WiFiClientSecure testClient;
         Serial.println("Attempting to connect to MQTT... ");
+#ifdef ENV_TEST
+        WiFiClient testClient;
+#else
+        WiFiClientSecure testClient;
         if (!creds->validateCACert)
         {
             testClient.setInsecure();
@@ -58,6 +65,7 @@ public:
             testClient.setCACert(root_ca);
         }
         testClient.setHandshakeTimeout(10000);
+#endif
         PubSubClient testPubSubClient(testClient);
 #ifdef HAS_CAMERA
         testPubSubClient.setBufferSize(65535);
@@ -66,7 +74,6 @@ public:
 #endif
         testPubSubClient.setKeepAlive(10);
         testPubSubClient.setServer(creds->server.c_str(), creds->port);
-
 
         int attempt = 0;
         const int max_attempts = 5;
@@ -81,10 +88,12 @@ public:
             {
                 Serial.print("failed, rc=");
                 Serial.print(testPubSubClient.state());
+#ifndef ENV_TEST
                 char err_buf[100];
                 testClient.lastError(err_buf, 100);
                 Serial.print(" | SSL Error: ");
                 Serial.println(err_buf);
+#endif
                 Serial.println(" try again in 5 seconds");
                 delay(5000);
                 attempt++;
@@ -125,14 +134,17 @@ public:
             }
         }
 
+#ifndef ENV_TEST
+        WiFiClientSecure &secureCli = static_cast<WiFiClientSecure &>(espClient);
         if (!creds->validateCACert)
         {
-            espClient.setInsecure();
+            secureCli.setInsecure();
         }
         else
         {
-            espClient.setCACert(root_ca);
+            secureCli.setCACert(root_ca);
         }
+#endif
 
         client->setServer(creds->server.c_str(), creds->port);
 
@@ -166,10 +178,12 @@ public:
             {
                 Serial.print("failed, rc=");
                 Serial.print(client->state());
+#ifndef ENV_TEST
                 char err_buf[100];
-                espClient.lastError(err_buf, 100);
+                static_cast<WiFiClientSecure &>(espClient).lastError(err_buf, 100);
                 Serial.print(" | SSL Error: ");
                 Serial.println(err_buf);
+#endif
                 Serial.println(" try again in 5 seconds");
                 delay(5000);
                 attempt++;

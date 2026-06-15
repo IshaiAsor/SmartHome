@@ -6,12 +6,14 @@ import {
   AdminDeviceConfigService,
   AdminDeviceType,
   AdminDeviceAction,
+  DeviceCapabilityBlueprint,
 } from 'src/app/services/admin.device.config.service';
 import { GoogleActionsTypesService } from 'src/app/services/google.actions.types.service';
 import { GoogleActionsTraitsService } from 'src/app/services/google.actions.traits.service';
 import { DeviceTypeDialogComponent } from './device-type-dialog.component';
 import { ActionDialogComponent, ActionDialogData } from './action-dialog.component';
 import { ConfirmDialogComponent, ConfirmDialogData } from './confirm-dialog.component';
+import { AuthService } from 'src/app/services/auth.service';
 
 @Component({
   selector: 'app-admin-device-config',
@@ -25,10 +27,14 @@ export class AdminDeviceConfigComponent implements OnInit {
   private snack = inject(MatSnackBar);
   private typesService = inject(GoogleActionsTypesService);
   private traitsService = inject(GoogleActionsTraitsService);
+  private authService = inject(AuthService);
+
+  get isAdmin(): boolean { return this.authService.getCurrentUser()?.role === 'admin'; }
 
   deviceTypes: AdminDeviceType[] = [];
   selectedDevice: AdminDeviceType | null = null;
   actions: AdminDeviceAction[] = [];
+  blueprints: DeviceCapabilityBlueprint[] = [];
   loading = false;
 
   private googleTypeMap = new Map<number, string>();
@@ -73,6 +79,10 @@ export class AdminDeviceConfigComponent implements OnInit {
     this.service.getActions(this.selectedDevice.id).subscribe({
       next: (actions) => { this.actions = actions; this.loading = false; },
       error: () => { this.loading = false; },
+    });
+    this.service.getBlueprints(this.selectedDevice.id).subscribe({
+      next: (blueprints) => { this.blueprints = blueprints; },
+      error: () => {},
     });
   }
 
@@ -120,7 +130,7 @@ export class AdminDeviceConfigComponent implements OnInit {
         usedPins.set(p.pinNumber, a.mqtt_action_name);
       }
     }
-    const dialogData: ActionDialogData = { action: action ?? null, usedPins };
+    const dialogData: ActionDialogData = { action: action ?? null, usedPins, blueprints: this.blueprints };
     const ref = this.dialog.open(ActionDialogComponent, { data: dialogData });
     ref.afterClosed().subscribe((result) => {
       if (!result || !this.selectedDevice) return;

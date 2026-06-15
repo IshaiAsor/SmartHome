@@ -1,3 +1,4 @@
+import envConfig from '../config/env.config';
 import { redisService } from './redis.service';
 import { vlmRepository, type DeviceVlmConfigFull } from '../dal/vlm.repository';
 import { vlmLogRepository } from '../dal/vlm.log.repository';
@@ -162,7 +163,7 @@ class VlmService {
       })),
     };
 
-    const endpointUrl = llmConfig.endpoint_url ?? 'http://ollama:11434';
+    const endpointUrl = llmConfig.endpoint_url ?? envConfig.ollama.baseUrl;
     const model = llmConfig.model ?? 'qwen2.5:3b';
     const systemPrompt = llmConfig.prompt ?? 'Analyze the sensor data and vision detections. Return a concise decision string.';
 

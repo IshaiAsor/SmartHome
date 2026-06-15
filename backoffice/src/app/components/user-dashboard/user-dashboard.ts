@@ -1,6 +1,6 @@
 import { Component, DestroyRef, HostListener, inject, OnInit } from '@angular/core';
 import { DeviceActionView } from 'src/app/services/device.mgmt.service';
-import { iconForDeviceType, hasTrait, COLOR_OPTIONS } from 'src/app/utils/device-type.utils';
+import { hasTrait, COLOR_OPTIONS, iconForAction } from 'src/app/utils/device-type.utils';
 import { DeviceSocketService } from 'src/app/services/device.socket.service';
 import { ActionGroupView, DashboardItem, UserActionsService } from 'src/app/services/user.actions.service';
 import { SHARED_MATERIAL } from 'src/app/shared-ui';
@@ -304,7 +304,7 @@ export class UserDashboard implements OnInit {
 
   // ── Device type icon + trait helpers ─────────────────────────────
 
-  iconForType = iconForDeviceType;
+  iconForAction = iconForAction;
   hasTrait = hasTrait;
   colorOptions = COLOR_OPTIONS;
 

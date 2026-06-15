@@ -123,54 +123,44 @@ public:
         Serial.print("Device ID: ");
         Serial.println(deviceID);
 
-        // Step 4: Exchange tokens with server (Step 1: Register)
-        Serial.println("Requesting temporary MQTT token from provisioning server...");
-        bleNotificationService->NotifyBleDevice(ResponseType::EXCHANGING_TOKENS_WITH_SERVER, "OK: Requesting temp token...");
-
-        String registrationId;
-        String finalizeUrl;
-        JwtToken *tempJwtData = jwtService->RequestTempJwtToken(pData, pData.provisioningToken, registrationId, finalizeUrl);
-
-        if (tempJwtData == nullptr)
-        {
-            Serial.println("Failed to request temporary JWT token.");
-            bleNotificationService->NotifyBleDevice(ResponseType::PROVISIONING_FAILED, "Failed to get temp token from server.");
-            return;
-        }
-
+        // Step 4: Test MQTT reachability using provisioningToken (userId as clientId)
         MqttCredentials mqttCreds;
-        mqttCreds.server = pData.server;
-        mqttCreds.port = pData.mqttPort;
+        mqttCreds.server         = pData.server;
+        mqttCreds.port           = pData.mqttPort;
         mqttCreds.validateCACert = pData.validateCACert;
-        mqttCreds.clientId = WiFi.macAddress(); // Use MAC for temp clientid
-        mqttCreds.userId = pData.userId;
+        mqttCreds.clientId       = pData.userId;  // matches clientid claim in provisioningToken JWT
+        mqttCreds.userId         = pData.userId;
 
-        // Note: We don't save to preferences yet, just use in memory
-        //  mqttService->updateCredentials(mqttCreds, tempJwtData->token);
+        JwtToken provToken;
+        provToken.token = pData.provisioningToken;
 
-        // Notify phone before BLE goes down, then release BLE memory.
-        // BLE (Bluedroid) + WiFi together hold ~150 KB of DRAM, leaving nothing for
-        // the ~32 KB mbedTLS SSL context. Deiniting BLE returns that memory so the
-        // TLS handshake can succeed. The device restarts either way, so BLE is not needed anymore.
-        Serial.println("Testing MQTT connection with temp token...");
+        Serial.println("Testing MQTT reachability with provisioning token...");
         bleNotificationService->NotifyBleDevice(ResponseType::TESTING_MQTT_CONNECTION, "OK: Testing MQTT...");
-        delay(300); // let the BLE notification flush before stack teardown
-        
+        delay(300); // let BLE TX flush before WiFi TCP
 
-        if (!mqttService->testMqtt(&mqttCreds, tempJwtData))
+        if (!mqttService->testMqtt(&mqttCreds, &provToken))
         {
-            Serial.println("MQTT connection failed. Restarting to retry provisioning...");
+            Serial.println("MQTT unreachable. Restarting to retry provisioning...");
+            bleNotificationService->NotifyBleDevice(ResponseType::PROVISIONING_FAILED, "FAIL: MQTT unreachable");
             onboardLed.execute("red");
             delay(2000);
             ESP.restart();
         }
 
-        Serial.println("MQTT connection successful! Finalizing registration...");
-        JwtToken *permanentJwtData = jwtService->FinalizeRegistration(finalizeUrl, registrationId, pData.validateCACert);
+        // Step 5: Single provision call — server upserts device type, blueprints, user_device
+        Serial.println("MQTT reachable! Sending provision request to server...");
+        bleNotificationService->NotifyBleDevice(ResponseType::EXCHANGING_TOKENS_WITH_SERVER, "OK: Registering device...");
+        delay(500); // let BLE TX flush before WiFi TCP — they share the radio
+
+        Serial.print("WiFi IP: ");
+        Serial.println(WiFi.localIP());
+
+        JwtToken *permanentJwtData = jwtService->Provision(pData, pData.provisioningToken);
 
         if (permanentJwtData == nullptr)
         {
-            Serial.println("Finalization failed. Restarting to retry provisioning...");
+            Serial.println("Provision call failed. Restarting to retry...");
+            bleNotificationService->NotifyBleDevice(ResponseType::PROVISIONING_FAILED, "FAIL: Server error");
             onboardLed.execute("red");
             delay(2000);
             ESP.restart();
@@ -184,9 +174,8 @@ public:
 
         onboardLed.execute("green");
 
+        Serial.println("Provisioning process complete.");
         delay(2000);
         ESP.restart();
-        delay(1000); // Short delay before allowing next provisioning attempt
-        Serial.println("Provisioning process complete.");
     }
 };

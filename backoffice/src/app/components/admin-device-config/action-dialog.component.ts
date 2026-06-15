@@ -2,14 +2,16 @@ import { Component, inject, OnInit, OnDestroy } from '@angular/core';
 import { AbstractControl, FormBuilder, FormGroup, ValidationErrors, ValidatorFn, Validators } from '@angular/forms';
 import { MAT_DIALOG_DATA, MatDialogRef } from '@angular/material/dialog';
 import { SHARED_MATERIAL } from 'src/app/shared-ui';
-import { AdminDeviceAction } from 'src/app/services/admin.device.config.service';
+import { AdminDeviceAction, DeviceCapabilityBlueprint } from 'src/app/services/admin.device.config.service';
 import { GoogleActionsTypesService, GoogleActionType } from 'src/app/services/google.actions.types.service';
 import { GoogleActionsTraitsService, GoogleActionTrait } from 'src/app/services/google.actions.traits.service';
 import { Subscription } from 'rxjs';
+import { PinSlot } from 'src/app/services/device.mgmt.service';
 
 export interface ActionDialogData {
   action: AdminDeviceAction | null;
   usedPins: Map<number, string>; // GPIO number → mqtt_action_name of the action using it
+  blueprints: DeviceCapabilityBlueprint[];
 }
 
 export const IMPLEMENTATION_TYPES = [
@@ -23,71 +25,11 @@ export const IMPLEMENTATION_TYPES = [
   { label: 'Humidity (SHT41)',      value: 'HumidityAction',            actionType: 'telemetry' },
   { label: 'Air Temperature (SHT41)', value: 'AirTemperatureAction',   actionType: 'telemetry' },
   { label: 'CO2 Sensor (MH-Z19B)', value: 'CO2LevelAction',            actionType: 'telemetry' },
-  { label: 'Camera (JPEG)',        value: 'TakePictureAction',         actionType: 'telemetry' },
-  { label: 'Camera (Live Stream)', value: 'LiveStreamAction',          actionType: 'telemetry' },
+  { label: 'Camera (Snapshot WS)',      value: 'TakePictureAction',     actionType: 'telemetry' },
+  { label: 'Camera (Snapshot HTTP)',    value: 'TakePictureHttpAction', actionType: 'telemetry' },
+  { label: 'Camera (Live Stream WS)',   value: 'LiveStreamAction',      actionType: 'telemetry' },
+  { label: 'Camera (Live Stream HTTP)', value: 'LiveStreamHttpAction',  actionType: 'telemetry' },
 ];
-
-export interface PinSlot {
-  key: string;
-  label: string;
-  mode: 'OUTPUT' | 'INPUT';
-  description: string;
-}
-
-export const PIN_BLUEPRINTS: Record<string, PinSlot[]> = {
-  OutletAction: [
-    { key: 'relay', label: 'Relay Pin',             mode: 'OUTPUT',
-      description: 'GPIO pin connected to the relay coil' },
-  ],
-  LightDimmerAction: [
-    { key: 'pwm',   label: 'PWM Pin',               mode: 'OUTPUT',
-      description: 'GPIO pin for PWM brightness control (analogWrite)' },
-  ],
-  OneDirectionalMotorAction: [
-    { key: 'in1',   label: 'Direction Pin 1 (IN1)', mode: 'OUTPUT',
-      description: 'Motor driver IN1 — forward direction control' },
-    { key: 'in2',   label: 'Direction Pin 2 (IN2)', mode: 'OUTPUT',
-      description: 'Motor driver IN2 — reverse direction control' },
-    { key: 'pwm',   label: 'Speed Pin (PWM)',        mode: 'OUTPUT',
-      description: 'Motor driver enable/speed pin (analogWrite)' },
-  ],
-  TemperatureAction: [
-    { key: 'data',  label: '1-Wire Data Pin',        mode: 'INPUT',
-      description: 'DS18B20 one-wire data line (requires 4.7 kΩ pull-up to 3.3 V)' },
-  ],
-  WaterLevelAction: [
-    { key: 'adc',   label: 'ADC Input Pin',            mode: 'INPUT',
-      description: 'Analog GPIO pin connected to the water level sensor' },
-  ],
-  PhLevelAction: [
-    { key: 'adc',   label: 'ADC Input Pin',            mode: 'INPUT',
-      description: 'Analog GPIO pin connected to the pH sensor' },
-  ],
-  TdsLevelAction: [
-    { key: 'adc',   label: 'ADC Input Pin',            mode: 'INPUT',
-      description: 'Analog GPIO pin connected to the TDS probe' },
-  ],
-  HumidityAction: [
-    { key: 'sda',   label: 'I2C SDA (SHT41)',          mode: 'INPUT',
-      description: 'I2C data line for the SHT41 sensor' },
-    { key: 'scl',   label: 'I2C SCL (SHT41)',          mode: 'INPUT',
-      description: 'I2C clock line for the SHT41 sensor' },
-  ],
-  AirTemperatureAction: [
-    { key: 'sda',   label: 'I2C SDA (SHT41)',          mode: 'INPUT',
-      description: 'I2C data line for the SHT41 sensor (same pin as Humidity)' },
-    { key: 'scl',   label: 'I2C SCL (SHT41)',          mode: 'INPUT',
-      description: 'I2C clock line for the SHT41 sensor (same pin as Humidity)' },
-  ],
-  CO2LevelAction: [
-    { key: 'rx',    label: 'UART RX (MH-Z19B)',        mode: 'INPUT',
-      description: 'ESP32 RX pin connected to MH-Z19B TX' },
-    { key: 'tx',    label: 'UART TX (MH-Z19B)',        mode: 'OUTPUT',
-      description: 'ESP32 TX pin connected to MH-Z19B RX' },
-  ],
-  TakePictureAction: [],
-  LiveStreamAction:  [],
-};
 
 // No two pin slots may share the same GPIO number
 const noDuplicatePinsValidator: ValidatorFn = (group: AbstractControl): ValidationErrors | null => {
@@ -291,7 +233,9 @@ export class ActionDialogComponent implements OnInit, OnDestroy {
     AirTemperatureAction:      ['action.devices.traits.TemperatureSetting'],
     CO2LevelAction:            ['action.devices.traits.CO2Level'],
     TakePictureAction:         ['action.devices.traits.CameraStream'],
+    TakePictureHttpAction:     ['action.devices.traits.CameraStream'],
     LiveStreamAction:          ['action.devices.traits.CameraStream'],
+    LiveStreamHttpAction:      ['action.devices.traits.CameraStream'],
   };
 
   mqttNameUserEdited = false;
@@ -343,10 +287,11 @@ export class ActionDialogComponent implements OnInit, OnDestroy {
   ngOnDestroy() { this.subs.unsubscribe(); }
 
   private rebuildPinForm(implType: string) {
-    const slots = PIN_BLUEPRINTS[implType] ?? [];
+    const blueprint = this.dialogData.blueprints.find(b => b.implementation_type === implType);
+    const slots: PinSlot[] = blueprint?.configurable_pins ?? [];
     this.currentBlueprint = slots;
     const controls: Record<string, [number | null, ValidatorFn[]]> = {};
-    slots.forEach((slot, i) => {
+    slots.forEach((slot: PinSlot, i: number) => {
       const existing = this.data?.pins?.[i]?.pinNumber ?? null;
       controls[slot.key] = [existing, [Validators.required, Validators.min(1), Validators.max(48), pinInUseValidator(this.dialogData.usedPins)]];
     });

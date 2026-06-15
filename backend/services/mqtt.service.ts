@@ -18,10 +18,11 @@ class MqttService {
   client: MqttClient;
 
   constructor() {
+    const useTls = Boolean(config.mqtt.caCertPath) || (config.mqtt.port ?? 1883) === 8883;
     const options: any = {
       host: config.mqtt.internalHost,
       port: config.mqtt.port,
-      protocol: 'mqtts',
+      protocol: useTls ? 'mqtts' : 'mqtt',
       username: config.mqtt.username,
       password: config.mqtt.password,
       rejectUnauthorized: config.mqtt.validateCert,

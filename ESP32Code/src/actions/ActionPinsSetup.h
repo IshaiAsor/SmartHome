@@ -30,3 +30,17 @@ struct GoogleTraitDef
     const char* traitValue;  // full "action.devices.traits.XXX" string
     const char* label;       // short label for serial logging
 };
+
+// Full capability descriptor — each action class returns one from capability().
+struct CapabilityDescriptor
+{
+    const char*           key;
+    const char*           label;
+    const char*           implType;
+    const char*           mqttType;
+    const char*           mqttName;
+    const char*           googleType;
+    const GoogleTraitDef* traits;
+    int                   minIntervalMs; // hardware minimum — user's configured interval must be >= this
+    const PinSlotDef*     pins;          // null-terminated array from blueprint(); nullptr = no configurable pins
+};

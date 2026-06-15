@@ -3,11 +3,8 @@
 #include <vector>
 #include <string>
 #include <Arduino.h>
-#include <services/mqtt.h>
-#include <OneWire.h>
-#include <DallasTemperature.h>
 #include <functional>
-#include "services/mqtt.h"
+#include "actions/ActionPinsSetup.h"
 
 class BaseTelemetryAction
 {

@@ -16,12 +16,19 @@ public:
         return slots;
     }
 
+    static const char* googleActionType() { return "action.devices.types.SENSOR"; }
+
     static const GoogleTraitDef* supportedTraits() {
         static const GoogleTraitDef traits[] = {
             { "action.devices.traits.TemperatureSetting", "TemperatureSetting" },
             { nullptr }
         };
         return traits;
+    }
+
+    static CapabilityDescriptor capability() {
+        return { "air_temp", "Air Temperature Sensor", "AirTemperatureAction", "telemetry", "air_temp",
+                 googleActionType(), supportedTraits(), 2000, blueprint() };
     }
 
 private:

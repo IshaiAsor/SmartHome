@@ -5,13 +5,15 @@
     "version": "0.2.0",
     "configurations": [
     {
-        "name": "Attach",
-        "port": 9229,
+        "name": "Debug Backend (dev + hot reload)",
+        "type": "node",
         "request": "attach",
-        "skipFiles": [
-            "<node_internals>/**"
-        ],
-        "type": "node"
+        "port": 9229,
+        "restart": true,
+        "preLaunchTask": "start-backend-debug",
+        "skipFiles": ["<node_internals>/**"],
+        "sourceMaps": true,
+        "outFiles": ["${workspaceFolder:Backend API}/**/*.js"]
     },
     {
         "name": "Start SSH Tunnel",
@@ -119,6 +121,10 @@
         "internalConsoleOptions": "openOnSessionStart"
     }
     ],    "compounds": [
+    {
+        "name": "Full Stack Debug (dev)",
+        "configurations": ["Debug Backend (dev + hot reload)", "Debug FrontEnd (Chrome)"]
+    },
     {
         "name": "Full Stack Debug (ts-node)",
         "configurations": ["Debug Backend (ts-node)", "Debug FrontEnd (Chrome)"]

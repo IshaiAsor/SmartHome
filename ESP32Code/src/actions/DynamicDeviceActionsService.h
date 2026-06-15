@@ -254,12 +254,6 @@ public:
             }
         }
 
-        if (_cmdActions.empty() && _telActions.empty())
-        {
-            Serial.println("[Config] Factory produced no actions.");
-            return false;
-        }
-
         _ownedByServer = true;
         Serial.printf("[Config] Loaded %d cmd + %d tel actions from server.\n",
             _cmdActions.size(), _telActions.size());

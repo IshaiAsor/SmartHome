@@ -19,6 +19,7 @@ model GoogleActionType {
   value      String         @unique @db.VarChar(255)
   created_at DateTime?      @default(now()) @db.Timestamp(6)
   device_action_types      DeviceActionType[]
+  device_actions           DeviceAction[]
 
   @@map("google_action_types")
 }
@@ -45,14 +46,16 @@ model DeviceActionType {
 
 model Device {
   id           Int           @id @default(autoincrement())
-  type         String?       @db.VarChar(255)
-  version      String?       @db.VarChar(255)
+  type         String        @db.VarChar(255)
+  version      String        @db.VarChar(255)
   default_name String        @unique @db.VarChar(255)
   created_at   DateTime?     @default(now()) @db.Timestamp(6)
   updated_at   DateTime?     @default(now()) @db.Timestamp(6)
-  device_actions DeviceAction[]
-  user_devices   UserDevice[]
+  device_actions               DeviceAction[]
+  user_devices                 UserDevice[]
+  device_capability_blueprints DeviceCapabilityBlueprint[]
 
+  @@unique([type, version])
   @@map("devices")
 }
 
@@ -60,7 +63,7 @@ model DeviceAction {
   id                  Int               @id @default(autoincrement())
   device_id           Int
   default_name        String            @db.VarChar(255)
-  google_type_id      Int
+  google_type_id      Int?
   mqtt_action_type    String?           @db.VarChar(255)
   mqtt_action_name    String?           @db.VarChar(255)
   implementation_type           String            @db.VarChar(64)
@@ -68,11 +71,31 @@ model DeviceAction {
   pins                          Json?
   telemetry_interval_ms         Int?
   device              Device            @relation(fields: [device_id], references: [id], onDelete: Cascade)
+  google_type         GoogleActionType? @relation(fields: [google_type_id], references: [id], onDelete: SetNull)
   action_type_traits  ActionTypeTrait[]
   user_device_actions UserDeviceAction[]
 
   @@unique([device_id, default_name])
   @@map("device_actions")
+}
+
+model DeviceCapabilityBlueprint {
+  id                    Int       @id @default(autoincrement())
+  device_id             Int
+  capability_key        String    @db.VarChar(64)
+  label                 String    @db.VarChar(255)
+  implementation_type   String    @db.VarChar(64)
+  mqtt_action_type      String    @db.VarChar(32)
+  mqtt_action_name      String    @db.VarChar(64)
+  configurable_pins         Json?
+  min_telemetry_interval_ms Int?
+  google_action_type        String?   @db.VarChar(255)
+  google_traits         Json?
+  created_at            DateTime? @default(now()) @db.Timestamp(6)
+  device                Device    @relation(fields: [device_id], references: [id], onDelete: Cascade)
+
+  @@unique([device_id, capability_key])
+  @@map("device_capability_blueprints")
 }
 
 model ActionTypeTrait {
@@ -128,10 +151,11 @@ model UserDeviceAction {
   id             Int        @id @default(autoincrement())
   user_device_id Int
   action_id      Int
-  action_name    String     @db.VarChar(255)
-  current_state  String?    @db.Text
-  sort_order     Int        @default(0)
-  group_name     String?    @db.VarChar(255)
+  action_name           String     @db.VarChar(255)
+  current_state         String?    @db.Text
+  sort_order            Int        @default(0)
+  group_name            String?    @db.VarChar(255)
+  telemetry_interval_ms Int?
   created_at     DateTime?  @default(now()) @db.Timestamp(6)
   updated_at     DateTime?  @default(now()) @db.Timestamp(6)
   user_device    UserDevice @relation(fields: [user_device_id], references: [id], onDelete: Cascade)

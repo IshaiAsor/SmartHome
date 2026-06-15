@@ -6,6 +6,7 @@ import { MgmtDeviceListComponent } from './components/mgmt-device-list/mgmt-devi
 import { UserDashboard } from './components/user-dashboard/user-dashboard';
 import { RulesComponent } from './components/rules/rules.component';
 import { AdminDeviceConfigComponent } from './components/admin-device-config/admin-device-config.component';
+import { DeviceConfigComponent } from './components/device-config/device-config.component';
 
 export const routes: Routes = [
   { path: '', redirectTo: '/dashboard', pathMatch: 'full' },
@@ -25,7 +26,12 @@ export const routes: Routes = [
     canActivate: [authGuard],
   },
   {
-    path: 'admin/device-config',
+    path: 'device-config',
+    component: DeviceConfigComponent,
+    canActivate: [authGuard],
+  },
+  {
+    path: 'admin/templates',
     component: AdminDeviceConfigComponent,
     canActivate: [authGuard, adminGuard],
   },

@@ -47,7 +47,56 @@ export class DeviceMgmtService {
   restartDevice(deviceId: number): Observable<void> {
     return this.http.post<void>(`${this.apiUrl}/api/mgmt/devices/${deviceId}/restart`, {});
   }
+
+  getDeviceBlueprints(deviceId: number): Observable<BlueprintView[]> {
+    return this.http.get<BlueprintView[]>(`${this.apiUrl}/api/mgmt/devices/${deviceId}/blueprints`);
+  }
+
+  activateBlueprint(
+    deviceId: number,
+    blueprintId: number,
+    telemetryIntervalMs?: number | null,
+    pins?: { pinNumber: number; pinMode: string }[],
+  ): Observable<void> {
+    return this.http.post<void>(`${this.apiUrl}/api/mgmt/devices/${deviceId}/actions/from-blueprint`, {
+      blueprintId,
+      telemetry_interval_ms: telemetryIntervalMs ?? null,
+      pins: pins ?? null,
+    });
+  }
+
+  updateActivatedAction(
+    deviceId: number,
+    userActionId: number,
+    updates: { name: string; telemetry_interval_ms?: number | null; pins?: { pinNumber: number; pinMode: string }[] },
+  ): Observable<void> {
+    return this.http.patch<void>(`${this.apiUrl}/api/mgmt/devices/${deviceId}/actions/${userActionId}`, updates);
+  }
 }
+
+export interface PinSlot {
+  key: string;
+  label: string;
+  mode: string;
+  description?: string;
+}
+
+export interface BlueprintView {
+  id: number;
+  capability_key: string;
+  label: string;
+  implementation_type: string;
+  mqtt_action_type: string;
+  mqtt_action_name: string;
+  min_telemetry_interval_ms: number | null;
+  configurable_pins: PinSlot[];
+  activated: boolean;
+  userDeviceActionId: number | null;
+  currentName: string | null;
+  currentPins: { pinNumber: number; pinMode: string }[] | null;
+  currentIntervalMs: number | null;
+}
+
 export interface DeviceView {
   id: number;
   deviceName: string;
@@ -71,6 +120,7 @@ export interface DeviceActionView {
   pins: DeviceActionPinView[];
   sortOrder: number;
   groupName: string | null;
+  implementation_type: string;
 }
 
 export interface DeviceActionPinView {

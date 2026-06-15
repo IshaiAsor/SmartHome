@@ -1,6 +1,5 @@
 import { userDevicesRepository } from '../dal/user.devices.repository';
-import { deviceActionDefinitionRepository } from '../dal/device.actions.repository';
-import { devicesRepository } from '../dal/devices';
+import { userDevicesActionsRepository } from '../dal/user.devices.actions.repository';
 
 export interface PinConfigDto {
   pinNumber: number;
@@ -24,20 +23,17 @@ export interface DeviceConfigurationDto {
 class DeviceConfigurationService {
   async getConfigurationForDevice(userDeviceId: number, version: string): Promise<DeviceConfigurationDto> {
     const userDevice = await userDevicesRepository.getById(userDeviceId);
-    const deviceType = userDevice.device.type ?? '';
+    const userActions = await userDevicesActionsRepository.getByDeviceId(userDeviceId);
 
-    const device = await devicesRepository.GetByType(deviceType, version);
-    const deviceActions = await deviceActionDefinitionRepository.Get(device.id);
-
-    const actions: ActionConfigDto[] = deviceActions.map(da => ({
-      mqtt_action_name:      da.mqtt_action_name ?? da.default_name,
-      implementation_type:   da.implementation_type,
-      mqtt_action_type:      da.mqtt_action_type ?? 'command',
-      pins:                  (da.pins ?? []) as unknown as PinConfigDto[],
-      telemetry_interval_ms: (da as any).telemetry_interval_ms ?? null,
+    const actions: ActionConfigDto[] = userActions.map(ua => ({
+      mqtt_action_name:      ua.action_name,
+      implementation_type:   ua.action.implementation_type,
+      mqtt_action_type:      ua.action.mqtt_action_type ?? 'command',
+      pins:                  (ua.action.pins ?? []) as unknown as PinConfigDto[],
+      telemetry_interval_ms: (ua as any).telemetry_interval_ms ?? (ua.action as any).telemetry_interval_ms ?? null,
     }));
 
-    return { device_type: deviceType, device_version: version, actions };
+    return { device_type: userDevice.device.type ?? '', device_version: version, actions };
   }
 }
 

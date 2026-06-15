@@ -1,0 +1,234 @@
+<div class="page-layout">
+
+  <!-- Left panel: devices -->
+  <div class="panel left-panel">
+    <div class="panel-header">
+      <h2>My Devices</h2>
+      @if (isAdmin) {
+        <button mat-icon-button matTooltip="Manage Templates" (click)="goToTemplates()">
+          <mat-icon>build</mat-icon>
+        </button>
+      }
+    </div>
+
+    @if (loadingDevices) {
+      <mat-progress-bar mode="indeterminate"></mat-progress-bar>
+    }
+
+    <mat-nav-list>
+      @for (device of devices; track device.id) {
+        <mat-list-item
+          [class.selected]="selectedDevice?.id === device.id"
+          (click)="selectDevice(device)">
+          <div class="device-item">
+            <div class="device-info">
+              <span class="device-name">{{ device.deviceName }}</span>
+              <span class="device-meta">{{ device.type }} · v{{ device.version }}</span>
+            </div>
+            <span class="status-dot" [class.online]="device.online" [class.offline]="!device.online"
+              [matTooltip]="device.online ? 'Online' : 'Offline'"></span>
+          </div>
+        </mat-list-item>
+      }
+      @if (!loadingDevices && devices.length === 0) {
+        <p class="empty-hint">No devices found.</p>
+      }
+    </mat-nav-list>
+  </div>
+
+  <!-- Right panel: blueprint config -->
+  <div class="panel right-panel">
+    @if (!selectedDevice) {
+      <div class="no-selection">
+        <mat-icon>touch_app</mat-icon>
+        <p>Select a device to configure its actions</p>
+      </div>
+    } @else {
+      <div class="config-header">
+        <h2>{{ selectedDevice.deviceName }}</h2>
+        <span class="device-meta">{{ selectedDevice.type }} · v{{ selectedDevice.version }}</span>
+      </div>
+
+      @if (loadingBlueprints) {
+        <mat-progress-bar mode="indeterminate"></mat-progress-bar>
+      }
+
+      @if (!loadingBlueprints && blueprints.length === 0) {
+        <div class="no-blueprints">
+          <mat-icon>sensors_off</mat-icon>
+          <p>No capabilities found for this device.</p>
+          <span>Provision the device first so it can report its capabilities.</span>
+        </div>
+      }
+
+      @if (blueprints.length > 0) {
+
+        <!-- Active actions -->
+        <p class="section-label">Active Actions</p>
+        @if (active.length === 0) {
+          <p class="empty-hint">No actions activated yet.</p>
+        }
+        <div class="bp-grid">
+          @for (bp of active; track bp.id) {
+            <mat-card class="bp-card active-card" [class.editing]="editingActionId === bp.userDeviceActionId">
+              <mat-card-header>
+                <mat-card-title>{{ bp.currentName ?? bp.label }}</mat-card-title>
+                <mat-card-subtitle>
+                  <span class="chip" [class.telemetry]="bp.mqtt_action_type === 'telemetry'">{{ typeChip(bp) }}</span>
+                  <span class="impl-type">{{ bp.implementation_type }}</span>
+                </mat-card-subtitle>
+              </mat-card-header>
+
+              @if (editingActionId === bp.userDeviceActionId) {
+                <mat-card-content>
+                  <!-- Name -->
+                  <p class="input-section-label">Action Name</p>
+                  <mat-form-field appearance="outline" class="pin-field">
+                    <mat-label>Name</mat-label>
+                    <input matInput [(ngModel)]="editName" />
+                  </mat-form-field>
+
+                  <!-- Pin inputs -->
+                  @if (pinSlots(bp).length > 0) {
+                    <p class="input-section-label">Pin Assignment</p>
+                    @for (slot of pinSlots(bp); track slot.key) {
+                      <mat-form-field appearance="outline" class="pin-field">
+                        <mat-label>{{ slot.label }}</mat-label>
+                        <input matInput type="number" min="1"
+                          [(ngModel)]="editPinValues[slot.key]" />
+                        <mat-hint>{{ slot.description }}</mat-hint>
+                        <mat-icon matSuffix class="mode-icon" [matTooltip]="slot.mode">
+                          {{ slot.mode === 'OUTPUT' ? 'output' : 'input' }}
+                        </mat-icon>
+                      </mat-form-field>
+                    }
+                  }
+
+                  <!-- Interval -->
+                  @if (bp.mqtt_action_type === 'telemetry') {
+                    <p class="input-section-label">Polling Interval</p>
+                    <mat-form-field appearance="outline" class="pin-field">
+                      <mat-label>Interval (ms)</mat-label>
+                      <input matInput type="number" [(ngModel)]="editIntervalMs"
+                        [min]="bp.min_telemetry_interval_ms ?? 0" />
+                      <mat-hint>Min: {{ bp.min_telemetry_interval_ms ?? 0 }} ms</mat-hint>
+                    </mat-form-field>
+                  }
+                </mat-card-content>
+              } @else {
+                @if (bp.min_telemetry_interval_ms || bp.currentIntervalMs) {
+                  <mat-card-content>
+                    @if (bp.currentIntervalMs) {
+                      <div class="meta-row">
+                        <span class="label">Interval</span>
+                        <span>{{ bp.currentIntervalMs }} ms</span>
+                      </div>
+                    }
+                    @if (bp.min_telemetry_interval_ms) {
+                      <div class="meta-row">
+                        <span class="label">Min interval</span>
+                        <span>{{ bp.min_telemetry_interval_ms }} ms</span>
+                      </div>
+                    }
+                  </mat-card-content>
+                }
+              }
+
+              <mat-card-actions align="end">
+                @if (editingActionId === bp.userDeviceActionId) {
+                  <button mat-button (click)="cancelEdit()">Cancel</button>
+                  <button mat-flat-button color="primary"
+                    [disabled]="!canSaveEdit(bp)"
+                    (click)="saveEdit(bp)">Save</button>
+                } @else {
+                  <button mat-icon-button matTooltip="Edit" (click)="startEdit(bp)">
+                    <mat-icon>edit</mat-icon>
+                  </button>
+                  <button mat-button color="warn" (click)="removeAction(bp)">
+                    <mat-icon>remove_circle_outline</mat-icon> Remove
+                  </button>
+                }
+              </mat-card-actions>
+            </mat-card>
+          }
+        </div>
+
+        <!-- Available capabilities -->
+        <p class="section-label">Available Capabilities</p>
+        @if (available.length === 0) {
+          <p class="empty-hint">All capabilities are active.</p>
+        }
+        <div class="bp-grid">
+          @for (bp of available; track bp.id) {
+            <mat-card class="bp-card" [class.expanded]="expandedBlueprintId === bp.id">
+              <mat-card-header>
+                <mat-card-title>{{ bp.label }}</mat-card-title>
+                <mat-card-subtitle>
+                  <span class="chip" [class.telemetry]="bp.mqtt_action_type === 'telemetry'">{{ typeChip(bp) }}</span>
+                  <span class="impl-type">{{ bp.implementation_type }}</span>
+                </mat-card-subtitle>
+              </mat-card-header>
+
+              @if (expandedBlueprintId === bp.id) {
+                <mat-card-content>
+
+                  <!-- Pin inputs -->
+                  @if (pinSlots(bp).length > 0) {
+                    <p class="input-section-label">Pin Assignment</p>
+                    @for (slot of pinSlots(bp); track slot.key) {
+                      <mat-form-field appearance="outline" class="pin-field">
+                        <mat-label>{{ slot.label }}</mat-label>
+                        <input matInput type="number" min="1"
+                          [(ngModel)]="pinInputValues[slot.key]" />
+                        <mat-hint>{{ slot.description }}</mat-hint>
+                        <mat-icon matSuffix class="mode-icon"
+                          [matTooltip]="slot.mode">
+                          {{ slot.mode === 'OUTPUT' ? 'output' : 'input' }}
+                        </mat-icon>
+                      </mat-form-field>
+                    }
+                  }
+
+                  <!-- Interval input for telemetry -->
+                  @if (bp.mqtt_action_type === 'telemetry') {
+                    <p class="input-section-label">Polling Interval</p>
+                    <mat-form-field appearance="outline" class="pin-field">
+                      <mat-label>Interval (ms)</mat-label>
+                      <input matInput type="number" [(ngModel)]="intervalInputValue"
+                        [min]="bp.min_telemetry_interval_ms ?? 0" />
+                      <mat-hint>Min: {{ bp.min_telemetry_interval_ms ?? 0 }} ms</mat-hint>
+                    </mat-form-field>
+                  }
+
+                </mat-card-content>
+              } @else {
+                @if (bp.min_telemetry_interval_ms) {
+                  <mat-card-content>
+                    <div class="meta-row">
+                      <span class="label">Min interval</span>
+                      <span>{{ bp.min_telemetry_interval_ms }} ms</span>
+                    </div>
+                  </mat-card-content>
+                }
+              }
+
+              <mat-card-actions align="end">
+                @if (expandedBlueprintId !== bp.id) {
+                  <button mat-flat-button color="primary" (click)="startAdd(bp)">
+                    <mat-icon>add</mat-icon> Add
+                  </button>
+                } @else {
+                  <button mat-button (click)="cancelAdd()">Cancel</button>
+                  <button mat-flat-button color="primary"
+                    [disabled]="!canConfirm(bp)"
+                    (click)="confirmAdd(bp)">Confirm</button>
+                }
+              </mat-card-actions>
+            </mat-card>
+          }
+        </div>
+      }
+    }
+  </div>
+
+</div>

@@ -14,12 +14,19 @@ public:
         return slots;
     }
 
+    static const char* googleActionType() { return "action.devices.types.SENSOR"; }
+
     static const GoogleTraitDef* supportedTraits() {
         static const GoogleTraitDef traits[] = {
             { "action.devices.traits.PhLevel", "PhLevel" },
             { nullptr }
         };
         return traits;
+    }
+
+    static CapabilityDescriptor capability() {
+        return { "ph_level", "pH Sensor", "PhLevelAction", "telemetry", "ph_level",
+                 googleActionType(), supportedTraits(), 5000, blueprint() };
     }
 
 private:

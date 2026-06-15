@@ -64,3 +64,28 @@ export function hasTrait(action: DeviceActionView, traitValue: string): boolean 
 }
 
 export const COLOR_OPTIONS = ['red', 'green', 'blue', 'orange', 'off'] as const;
+
+export function iconForAction(action: DeviceActionView): string {
+  if (action.googleType?.value) return iconForDeviceType(action.googleType.value);
+  switch (action.implementation_type) {
+    case 'OutletAction':              return 'outlet';
+    case 'LightDimmerAction':         return 'light_mode';
+    case 'OneDirectionalMotorAction': return 'toys_fan';
+    case 'TemperatureAction':
+    case 'AirTemperatureAction':      return 'thermometer';
+    case 'HumidityAction':            return 'humidity_high';
+    case 'WaterLevelAction':          return 'water';
+    case 'PhLevelAction':             return 'science';
+    case 'TdsLevelAction':            return 'water_drop';
+    case 'CO2LevelAction':            return 'air';
+    case 'TakePictureAction':
+    case 'LiveStreamAction':          return 'photo_camera';
+    default:                          return 'device_unknown';
+  }
+}
+
+// Returns implementation_type only when the action has no Google traits assigned.
+// Use as a rendering fallback for pure blueprint-activated actions.
+export function implTypeOf(action: DeviceActionView): string | null {
+  return action.googleTraits.length === 0 ? (action.implementation_type ?? null) : null;
+}

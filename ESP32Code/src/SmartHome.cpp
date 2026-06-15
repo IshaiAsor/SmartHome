@@ -47,7 +47,11 @@ QueueHandle_t provisioningQueue = NULL;
 QueueHandle_t bleResponseQueue = NULL;
 
 WiFiManager wm;
+#ifdef ENV_TEST
+WiFiClient espClient;
+#else
 WiFiClientSecure espClient;
+#endif
 PreferencesManagerService prefService;
 JwtService jwtService;
 DateTimeSyncService dateTimeSyncService;

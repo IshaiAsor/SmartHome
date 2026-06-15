@@ -51,7 +51,7 @@ public:
 
             actions.push_back(ac);
         }
-        parsed = !actions.empty();
+        parsed = src["actions"].is<JsonArrayConst>();  // empty array is valid "no actions configured"
     }
 
     void toJson(JsonVariant) const override {}

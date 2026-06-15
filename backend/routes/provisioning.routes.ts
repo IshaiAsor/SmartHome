@@ -1,63 +1,39 @@
 import express, { Request, Response } from 'express';
-import { verifyToken } from '../middlewares/auth.middleware'; // Assuming an auth middleware exists
+import { verifyToken } from '../middlewares/auth.middleware';
 import { provisioningService } from '../services/provisioning.service';
-import { exceptionHandler } from '../middlewares/exception.middleware';
 import { JwtPurpose } from '../services/jwt.service';
+
 const router = express.Router();
-router.use(exceptionHandler);
 
 router.get('/provision-token', verifyToken(JwtPurpose.app_usage), async (req: Request, res: Response) => {
   const userId = (req as any).user?.id;
-
   if (!userId) {
     return res.status(401).send('User not authenticated');
   }
-  let token = await provisioningService.GenerateProvisioningToken(userId);
+  const token = await provisioningService.GenerateProvisioningToken(userId);
   res.send(token);
 });
 
-router.post('/register-device', verifyToken(JwtPurpose.device_provisioning),async (req: Request, res: Response) => {
-  let bodyData = req.body;
-  if (typeof bodyData === 'string') {
-    try {
-      const parsed = JSON.parse(bodyData.trim());
-      if (parsed && typeof parsed === 'object') bodyData = parsed;
-    } catch (e) {}
-  }
-
-  let provisioningToken = '';
-  if (typeof bodyData === 'string' && (bodyData.startsWith('ey') || bodyData.startsWith('"ey'))) {
-    provisioningToken = bodyData.trim();
-    if (provisioningToken.startsWith('"') && provisioningToken.endsWith('"')) {
-        provisioningToken = provisioningToken.substring(1, provisioningToken.length - 1);
+router.post('/provision', verifyToken(JwtPurpose.device_provisioning), async (req: Request, res: Response) => {
+  try {
+    const { macAddress, deviceType, version, capabilities } = req.body;
+    if (!macAddress || !deviceType || !version || !Array.isArray(capabilities)) {
+      return res.status(400).json({ error: 'Missing required fields: macAddress, deviceType, version, capabilities' });
     }
-  } else {
-    provisioningToken = bodyData.provisioningToken;
-    if (provisioningToken) provisioningToken = provisioningToken.trim();
+    const result = await provisioningService.provisionDevice(
+      req.user.userId, macAddress, deviceType, version, capabilities,
+    );
+    res.json(result);
+  } catch (err: any) {
+    console.error('[provision] ERROR:', err?.message, err?.stack);
+    res.status(500).json({ error: err?.message || 'Internal Server Error' });
   }
-
-  const deviceType = bodyData.deviceType || req.query.deviceType;
-  const deviceId = bodyData.deviceId || req.query.deviceId;
-  const macAddress = bodyData.macAddress || req.query.macAddress;
-  const version = bodyData.version || req.query.version;
-  const userId = req.user.userId;
-
-  let permanentToken = await provisioningService.registerDevice(userId, provisioningToken, deviceType as string, deviceId, macAddress as string, version as string);
-  res.json(permanentToken);
-});
-
-router.post('/finalize-registration', async (req: Request, res: Response) => {
-  const registrationId = req.body.registrationId;
-  if (!registrationId) {
-    return res.status(400).send('Missing registrationId');
-  }
-  let result = await provisioningService.finalizeRegistration(registrationId);
-  res.json(result);
 });
 
 router.post('/refresh-token', verifyToken(JwtPurpose.device_usage_refresh), async (req: Request, res: Response) => {
   const refreshToken = req.body.refreshToken;
-  var result = await provisioningService.RefreshMqttToken(refreshToken);
+  const result = await provisioningService.RefreshMqttToken(refreshToken);
   res.json(result);
 });
+
 export default router;
