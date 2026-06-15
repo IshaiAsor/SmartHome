@@ -1,0 +1,16 @@
+[
+  {
+    "kind": "vlm",
+    "name": "yolo",
+    "version": "v1",
+    "backend": "onnx",
+    "modelFile": "yolo.onnx"
+  },
+  {
+    "kind": "llm",
+    "name": "qwen",
+    "version": "v1",
+    "backend": "ollama",
+    "ollamaModel": "qwen2.5vl:7b"
+  }
+]
