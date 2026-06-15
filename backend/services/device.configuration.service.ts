@@ -26,7 +26,7 @@ class DeviceConfigurationService {
     const userActions = await userDevicesActionsRepository.getByDeviceId(userDeviceId);
 
     const actions: ActionConfigDto[] = userActions.map(ua => ({
-      mqtt_action_name:      ua.action_name,
+      mqtt_action_name:      ua.action.mqtt_action_name ?? ua.action_name,
       implementation_type:   ua.action.implementation_type,
       mqtt_action_type:      ua.action.mqtt_action_type ?? 'command',
       pins:                  (ua.action.pins ?? []) as unknown as PinConfigDto[],
