@@ -28,6 +28,10 @@
       "name": "ML Router",
       "path": "services/ml-router",
     },
+    {
+      "name": "Device Gateway",
+      "path": "services/device-gateway",
+    },
   ],
   "settings": {
     "files.exclude": {

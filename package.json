@@ -7,7 +7,7 @@
     "services/*"
   ],
   "scripts": {
-    "build:libs": "npm run build -w @lattice/logger && npm run build -w @lattice/otel && npm run build -w @lattice/queue"
+    "build:libs": "npm run build -w @lattice/logger && npm run build -w @lattice/otel && npm run build -w @lattice/queue && npm run build -w @lattice/jwt"
   },
   "engines": {
     "node": ">=20"

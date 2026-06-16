@@ -101,6 +101,17 @@
         "outFiles": ["${workspaceFolder:ML Router}/**/*.js"]
     },
     {
+        "name": "Debug Device Gateway (dev + hot reload)",
+        "type": "node",
+        "request": "attach",
+        "port": 9231,
+        "restart": true,
+        "preLaunchTask": "start-device-gateway-debug",
+        "skipFiles": ["<node_internals>/**"],
+        "sourceMaps": true,
+        "outFiles": ["${workspaceFolder:Device Gateway}/**/*.js"]
+    },
+    {
         "type": "debugpy",
         "request": "launch",
         "name": "Train ML Router Model",
@@ -130,7 +141,7 @@
     },
     {
         "name": "All Backend Services (dev)",
-        "configurations": ["Debug Backend (dev + hot reload)", "Debug ML Router (dev + hot reload)"]
+        "configurations": ["Debug Backend (dev + hot reload)", "Debug ML Router (dev + hot reload)", "Debug Device Gateway (dev + hot reload)"]
     }
     ]
 }
