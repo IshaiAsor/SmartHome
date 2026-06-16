@@ -81,7 +81,6 @@ void setup()
 {
   Serial.begin(115200);
 #ifdef ARDUINO_USB_CDC_ON_BOOT
-  // USB CDC: wait up to 3 s for the host to open the port, then continue
   uint32_t t = millis();
   while (!Serial && (millis() - t) < 3000)
     delay(10);
