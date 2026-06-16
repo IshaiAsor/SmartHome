@@ -14,7 +14,7 @@ RUN npm run build -w @lattice/logger \
  && npm run build -w @lattice/queue \
  && npm run build -w @lattice/ml-router
 
-FROM node:22-alpine
+FROM node:22-slim
 WORKDIR /app
 
 COPY --from=builder /workspace/node_modules ./node_modules
