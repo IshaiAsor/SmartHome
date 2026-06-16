@@ -23,7 +23,7 @@ let _registry: Map<ModelKey, ModelConfig> | undefined;
 
 export function loadRegistry(): Map<ModelKey, ModelConfig> {
   if (_registry) return _registry;
-  const path = resolve(__dirname, '..', '..', 'models.json');
+  const path = resolve(__dirname, '..', 'models.json');
   const entries = JSON.parse(readFileSync(path, 'utf8')) as ModelConfig[];
   _registry = new Map(entries.map((m) => [modelKey(m), m]));
   return _registry;
