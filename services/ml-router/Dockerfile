@@ -1,4 +1,6 @@
-FROM node:22-alpine AS builder
+FROM node:22-slim AS base
+
+FROM base AS builder
 WORKDIR /workspace
 
 COPY package.json package-lock.json ./
@@ -14,7 +16,7 @@ RUN npm run build -w @lattice/logger \
  && npm run build -w @lattice/queue \
  && npm run build -w @lattice/ml-router
 
-FROM node:22-slim
+FROM base
 WORKDIR /app
 
 COPY --from=builder /workspace/node_modules ./node_modules
