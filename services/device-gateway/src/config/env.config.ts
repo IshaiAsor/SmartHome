@@ -3,10 +3,21 @@ export const env = {
   jwtSecret:    process.env['JWT_SECRET'] ?? 'dev-secret',
   logLevel:     process.env['LOG_LEVEL'] ?? 'info',
   otelEndpoint: process.env['OTEL_EXPORTER_OTLP_ENDPOINT'],
+  rabbitmqUrl:  process.env['RABBITMQ_URL'] ?? 'amqp://localhost',
+
+  // Public base URL of device-gateway — embedded in provisioning responses so devices
+  // call back to the gateway (config, refresh, camera) rather than the monolith.
+  baseUrl:      process.env['BASE_URL'] ?? 'http://localhost:3004',
+
+  mqtt: {
+    serverName:   process.env['MQTT_SERVER_NAME'] ?? 'localhost',
+    port:         parseInt(process.env['MQTT_PORT'] ?? '8883', 10),
+    validateCert: (process.env['MQTT_VALIDATE_CERT'] ?? 'true') === 'true',
+  },
 
   jwt: {
-    deviceProvisioningExpiresIn: parseInt(process.env['DEVICE_PROVISION_EXPIRES_IN']    ?? '3600'),
-    deviceExpiresIn:             parseInt(process.env['JWT_DEVICE_USAGE_EXPIRES_IN']    ?? '31536000'),
+    deviceProvisioningExpiresIn: parseInt(process.env['DEVICE_PROVISION_EXPIRES_IN']      ?? '3600'),
+    deviceExpiresIn:             parseInt(process.env['JWT_DEVICE_USAGE_EXPIRES_IN']      ?? '31536000'),
     deviceTempExpiresIn:         parseInt(process.env['JWT_DEVICE_TEMP_USAGE_EXPIRES_IN'] ?? '300'),
     deviceRefreshExpiresIn:      parseInt(process.env['JWT_DEVICE_USAGE_REFRESH_EXPIRES_IN'] ?? '315360000'),
   },

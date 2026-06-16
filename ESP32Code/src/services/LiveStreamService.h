@@ -65,7 +65,8 @@ private:
 public:
     void begin(const String& deviceConfigUrl, const String& token,
                bool validateCACert, const char* caCert = nullptr,
-               const String& wsPath = "/ws/stream")
+               const String& wsPath = "/ws/stream",
+               const String& actionName = "")
     {
         // Derive a short label and task name from the path for log readability
         _label = wsPath.endsWith("capture") ? "Capture" : "Stream";
@@ -73,7 +74,8 @@ public:
 
         String host; uint16_t port; bool useSSL;
         parseUrl(deviceConfigUrl, validateCACert, host, port, useSSL);
-        String path = wsPath + "?token=" + token;
+        // The device names its own action; the gateway reads it from the query.
+        String path = wsPath + "?token=" + token + "&action=" + actionName;
         Serial.printf("[%s] Connecting to %s:%u%s\n", _label.c_str(), host.c_str(), port, path.c_str());
 
         _ws.onEvent([this](WStype_t type, uint8_t*, size_t) {

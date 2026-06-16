@@ -263,9 +263,9 @@ public:
         {
             if (ac.mqtt_action_type != "telemetry") continue;
             if (ac.implementation_type == "LiveStreamAction")
-                liveStreamService.begin(jwtData->deviceConfigUrl, jwtData->token, jwtData->validateCACert, root_ca);
+                liveStreamService.begin(jwtData->deviceConfigUrl, jwtData->token, jwtData->validateCACert, root_ca, "/ws/stream", ac.mqtt_action_name);
             else if (ac.implementation_type == "TakePictureAction")
-                wsCaptureService.begin(jwtData->deviceConfigUrl, jwtData->token, jwtData->validateCACert, root_ca, "/ws/capture");
+                wsCaptureService.begin(jwtData->deviceConfigUrl, jwtData->token, jwtData->validateCACert, root_ca, "/ws/capture", ac.mqtt_action_name);
             else if (ac.implementation_type == "TakePictureHttpAction" ||
                      ac.implementation_type == "LiveStreamHttpAction")
                 httpFrameService.begin(jwtData->cameraHttpUrl, jwtData->token, jwtData->validateCACert, root_ca);

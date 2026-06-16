@@ -57,9 +57,9 @@ protected:
             return "";
         }
 
-        Serial.printf("[Camera] Captured %u bytes JPEG -> HTTP /api/camera/frame?type=stream\n",
-                      (unsigned)fb->len);
-        httpFrameService.sendFrame(fb->buf, fb->len, false);
+        Serial.printf("[Camera] Captured %u bytes JPEG -> HTTP /api/camera/frame?action=%s\n",
+                      (unsigned)fb->len, actionName.c_str());
+        httpFrameService.sendFrame(fb->buf, fb->len, actionName);
         esp_camera_fb_return(fb);
 
         return "";

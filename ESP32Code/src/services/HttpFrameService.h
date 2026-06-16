@@ -11,7 +11,7 @@
 struct HttpFrame {
     uint8_t *buf;
     size_t   len;
-    bool     isCapture;
+    char     action[64];   // mqtt_action_name this frame belongs to
 };
 
 class HttpFrameService
@@ -44,8 +44,7 @@ private:
             if (xQueueReceive(self->_queue, &frame, pdMS_TO_TICKS(100)) != pdTRUE)
                 continue;
 
-            const char *typeParam = frame.isCapture ? "capture" : "stream";
-            String url = self->_baseUrl + "/api/camera/frame?type=" + typeParam;
+            String url = self->_baseUrl + "/api/camera/frame?action=" + frame.action;
 
             bool begun = self->_useSSL
                 ? http.begin(ssl,   url)
@@ -91,7 +90,7 @@ public:
 
     bool isReady() const { return _queue != nullptr; }
 
-    bool sendFrame(const uint8_t *buf, size_t len, bool isCapture)
+    bool sendFrame(const uint8_t *buf, size_t len, const String& actionName)
     {
         if (!_queue) return false;
 
@@ -105,7 +104,10 @@ public:
         }
 
         memcpy(copy, buf, len);
-        HttpFrame frame = { copy, len, isCapture };
+        HttpFrame frame;
+        frame.buf = copy;
+        frame.len = len;
+        strlcpy(frame.action, actionName.c_str(), sizeof(frame.action));
 
         if (xQueueSend(_queue, &frame, 0) != pdTRUE)
         {

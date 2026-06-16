@@ -12,11 +12,15 @@
     "@lattice/logger": "*",
     "@lattice/otel": "*",
     "@lattice/jwt": "*",
-    "express": "^4.21.2"
+    "@lattice/prisma-client": "*",
+    "@lattice/queue": "*",
+    "express": "^4.21.2",
+    "ws": "^8.18.0"
   },
   "devDependencies": {
     "@types/express": "^4.17.21",
     "@types/node": "^20.0.0",
+    "@types/ws": "^8.5.12",
     "ts-node": "^10.9.2",
     "typescript": "^5.9.3"
   }
