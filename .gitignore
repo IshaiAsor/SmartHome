@@ -45,6 +45,7 @@ Thumbs.db
 **/package-lock.json
 !/package-lock.json
 !backoffice/package-lock.json
+**/tsconfig.tsbuildinfo
 **/.pio/
 
 # Environment variables (local only, keep .env.example)
