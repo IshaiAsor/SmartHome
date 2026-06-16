@@ -1,4 +1,4 @@
-FROM node:20-alpine AS builder
+FROM node:22-alpine AS builder
 WORKDIR /workspace
 
 COPY package.json package-lock.json ./
@@ -14,19 +14,22 @@ RUN npm run build -w @lattice/logger \
  && npm run build -w @lattice/queue \
  && npm run build -w @lattice/ml-router
 
-FROM node:20-alpine
+FROM node:22-alpine
 WORKDIR /app
 
 COPY --from=builder /workspace/node_modules ./node_modules
 # npm workspace packages land as symlinks pointing at /workspace/packages/* which
 # doesn't exist in this stage. Remove them and copy the real built directories.
 RUN rm -rf node_modules/@lattice
-COPY --from=builder /workspace/packages/logger/package.json ./node_modules/@lattice/logger/package.json
-COPY --from=builder /workspace/packages/logger/dist         ./node_modules/@lattice/logger/dist
-COPY --from=builder /workspace/packages/otel/package.json   ./node_modules/@lattice/otel/package.json
-COPY --from=builder /workspace/packages/otel/dist           ./node_modules/@lattice/otel/dist
-COPY --from=builder /workspace/packages/queue/package.json  ./node_modules/@lattice/queue/package.json
-COPY --from=builder /workspace/packages/queue/dist          ./node_modules/@lattice/queue/dist
+COPY --from=builder /workspace/packages/logger/package.json  ./node_modules/@lattice/logger/package.json
+COPY --from=builder /workspace/packages/logger/dist          ./node_modules/@lattice/logger/dist
+COPY --from=builder /workspace/packages/logger/node_modules  ./node_modules/@lattice/logger/node_modules
+COPY --from=builder /workspace/packages/otel/package.json    ./node_modules/@lattice/otel/package.json
+COPY --from=builder /workspace/packages/otel/dist            ./node_modules/@lattice/otel/dist
+COPY --from=builder /workspace/packages/otel/node_modules    ./node_modules/@lattice/otel/node_modules
+COPY --from=builder /workspace/packages/queue/package.json   ./node_modules/@lattice/queue/package.json
+COPY --from=builder /workspace/packages/queue/dist           ./node_modules/@lattice/queue/dist
+COPY --from=builder /workspace/packages/queue/node_modules   ./node_modules/@lattice/queue/node_modules
 
 COPY --from=builder /workspace/services/ml-router/dist ./dist
 COPY --from=builder /workspace/services/ml-router/models.json ./models.json
