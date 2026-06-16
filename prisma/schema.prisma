@@ -261,7 +261,7 @@ model DeviceVlmConfig {
 model SensorHistory {
   id                    Int              @id @default(autoincrement())
   user_device_action_id Int
-  value                 String           @db.VarChar(255)
+  value                 String           @db.Text
   recorded_at           DateTime         @default(now()) @db.Timestamp(6)
   user_device_action    UserDeviceAction @relation(fields: [user_device_action_id], references: [id], onDelete: Cascade)
 

@@ -36,6 +36,10 @@
       "name": "MQTT Service",
       "path": "services/mqtt-service",
     },
+    {
+      "name": "Digest Service",
+      "path": "services/digest-service",
+    },
   ],
   "settings": {
     "files.exclude": {

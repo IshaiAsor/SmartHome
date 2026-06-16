@@ -73,3 +73,15 @@ export interface OtaDispatchPayload {
   releaseNotes?: string;
   timestamp: string;
 }
+
+// Incoming OTA release trigger — published by ota-manager/CI, consumed by
+// digest-service which validates + audit-logs, then forwards to OtaDispatchPayload.
+// Shape mirrors OtaDispatchPayload for now but kept separate as it may diverge
+// (e.g. carry CI metadata or an auth token).
+export interface OtaIncomingPayload {
+  deviceType: string;
+  version: string;
+  url: string;
+  releaseNotes?: string;
+  timestamp: string;
+}

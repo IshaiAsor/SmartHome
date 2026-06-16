@@ -1,0 +1,4 @@
+node_modules/
+dist/
+# Transiently generated from the monorepo-root schema by scripts/prepare-prisma.mjs
+prisma/
