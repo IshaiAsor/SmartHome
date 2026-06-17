@@ -19,7 +19,6 @@ import userRulesRoutes from './routes/user.rules.routes';
 import adminDeviceConfigRoutes from './routes/admin.device.config.routes';
 import vlmRoutes from './routes/vlm.routes';
 import emergencyRoutes from './routes/emergency.routes';
-import { rulesEngineService } from './services/rules.engine.service';
 import { sensorHistoryRepository } from './dal/sensor.history.repository';
 import cron from 'node-cron';
 import http from 'http';
@@ -84,8 +83,7 @@ if (fs.existsSync(publicPath)) {
 
 async function startServer() {
   redisService.connect();
-  cron.schedule('* * * * *', () => rulesEngineService.evaluateScheduledRules());
-
+  // Rules evaluation cron moved to services/automation-worker (F6.2).
 
   // Prune sensor history older than 30 days (runs daily at midnight)
   cron.schedule('0 0 * * *', () =>

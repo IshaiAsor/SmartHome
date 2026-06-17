@@ -1,12 +1,10 @@
 import commandDispatch from './command.dispatch.service';
-import { rulesEngineService } from './rules.engine.service';
 import { userDevicesActionsRepository } from '../dal/user.devices.actions.repository';
 
 export type ActionSource = 'rules' | 'google';
 
 export interface DispatchOptions {
   skipMqttPublish?: boolean;
-  skipRulesEval?: boolean;
   duration?: string;
 }
 
@@ -34,10 +32,6 @@ class ActionHubService {
     if (!options.skipMqttPublish) {
       const command = { value: state, duration: options.duration ?? '*' };
       await commandDispatch.publishCommand(userId, action.user_device_id, action.mqtt_action_name, command);
-    }
-
-    if (!options.skipRulesEval) {
-      rulesEngineService.evaluateForUser(userId);
     }
   }
 }

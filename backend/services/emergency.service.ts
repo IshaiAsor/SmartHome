@@ -22,9 +22,8 @@ class EmergencyService {
       );
 
       if (rule.target_action_id && rule.target_state) {
-        actionHubService.dispatch(userId, rule.target_action_id, rule.target_state, 'rules', {
-          skipRulesEval: true,
-        }).catch(err => console.error('[Emergency] Failed to dispatch action:', err));
+        actionHubService.dispatch(userId, rule.target_action_id, rule.target_state, 'rules')
+          .catch(err => console.error('[Emergency] Failed to dispatch action:', err));
       }
 
       // TODO(F9): emergency_alert real-time notification — re-land in the emergency

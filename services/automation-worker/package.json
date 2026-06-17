@@ -1,0 +1,26 @@
+{
+  "name": "@lattice/automation-worker",
+  "version": "0.1.0",
+  "private": true,
+  "main": "dist/index.js",
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "dev": "ts-node -P tsconfig.json src/index.ts",
+    "start": "node dist/index.js"
+  },
+  "dependencies": {
+    "@lattice/logger": "*",
+    "@lattice/otel": "*",
+    "@lattice/prisma-client": "*",
+    "@lattice/queue": "*",
+    "express": "^4.21.2",
+    "node-cron": "^3.0.3"
+  },
+  "devDependencies": {
+    "@types/express": "^4.17.21",
+    "@types/node": "^20.0.0",
+    "@types/node-cron": "^3.0.11",
+    "ts-node": "^10.9.2",
+    "typescript": "^5.9.3"
+  }
+}

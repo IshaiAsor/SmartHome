@@ -4,7 +4,6 @@ import { vlmRepository, type DeviceVlmConfigFull } from '../dal/vlm.repository';
 import { vlmLogRepository } from '../dal/vlm.log.repository';
 import { sensorHistoryRepository } from '../dal/sensor.history.repository';
 import { userDevicesActionsRepository } from '../dal/user.devices.actions.repository';
-import { rulesEngineService } from './rules.engine.service';
 import crypto from 'crypto';
 
 export interface VlmDetection {
@@ -106,7 +105,8 @@ class VlmService {
     }
 
     await vlmRepository.updateLastAnalyzed(cfg.id);
-    rulesEngineService.evaluateForUser(userId);
+    // Rules evaluation for vlm_result/vlm_decision conditions is handled by
+    // automation-worker (F6.2) once F8 wires VLM results into the rules queue.
   }
 
   private async callVlmServer(
