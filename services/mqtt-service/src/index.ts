@@ -8,6 +8,7 @@ import { TopicRouter } from './mqtt/topic-router';
 import { SUBSCRIBE_TOPICS } from './mqtt/subscriptions';
 import { deviceStatusHandler } from './handlers/device-status.handler';
 import { deviceTelemetryHandler } from './handlers/device-telemetry.handler';
+import { deviceAckHandler } from './handlers/device-ack.handler';
 import { actionDispatchConsumer } from './consumers/action-dispatch.consumer';
 import { otaDispatchConsumer } from './consumers/ota-dispatch.consumer';
 import { healthRouter } from './routes/health.routes';
@@ -40,6 +41,7 @@ async function main() {
   const handlers = [
     deviceStatusHandler(ch),
     deviceTelemetryHandler(ch),
+    deviceAckHandler(ch),
   ];
 
   const router = new TopicRouter();

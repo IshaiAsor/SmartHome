@@ -54,7 +54,23 @@ export interface ActionDispatchPayload {
   deviceId: string;
   actionName: string;
   command: unknown;
+  commandId?: string;   // correlates the device's ack back to the in-flight request
   firmwareVersion?: string;
+}
+
+// A device's acknowledgement that it executed (or rejected) a command. Published by the
+// device on .../ack/{actionName}, forwarded by mqtt-service. digest writes the
+// authoritative current_state ONLY on status 'ok'. commandId correlates back to the
+// pending request for the in-flight UI; it is absent for unsolicited state changes the
+// device reports on its own (boot restore, duration auto-off).
+export interface ActionResultPayload {
+  userId: string;
+  deviceId: string;
+  actionName: string;
+  commandId?: string;
+  status: 'ok' | 'error';
+  value?: unknown;     // resulting state the device actually applied
+  timestamp: string;
 }
 
 export interface PipelineStagePayload {

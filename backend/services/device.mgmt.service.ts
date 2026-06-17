@@ -3,8 +3,6 @@ import { devicesRepository } from '../dal/devices';
 import { deviceActionDefinitionRepository } from '../dal/device.actions.repository';
 import { userDevicesActionsRepository } from '../dal/user.devices.actions.repository';
 import { blueprintsRepository } from '../dal/blueprints.repository';
-import { googleActionTypesRepository } from '../dal/google.action.types.repository';
-import { googleTraitsRepository } from '../dal/google.action.traits.repository';
 import commandDispatch from './command.dispatch.service';
 import db from '../config/db';
 import { Prisma } from '@prisma/client';
@@ -144,19 +142,34 @@ class DeviceMgmtService {
     const blueprint = await blueprintsRepository.getById(blueprintId);
     if (!blueprint) throw Object.assign(new Error('Blueprint not found'), { status: 404 });
 
-    const [allTypes, allTraits] = await Promise.all([
-      googleActionTypesRepository.getAll(),
-      googleTraitsRepository.getAll(),
-    ]);
-
-    const googleTypeId = blueprint.google_action_type
-      ? (allTypes.find(t => t.value === blueprint.google_action_type)?.id ?? null)
-      : null;
+    // Auto-upsert Google types/traits from firmware-declared values so the catalog
+    // self-populates without requiring F1.9 pre-seeding. Admins can curate names via F2.4.
+    let googleTypeId: number | null = null;
+    if (blueprint.google_action_type) {
+      const googleType = await db.googleActionType.upsert({
+        where: { value: blueprint.google_action_type },
+        update: {},
+        create: {
+          value: blueprint.google_action_type,
+          name: blueprint.google_action_type.split('.').pop() ?? blueprint.google_action_type,
+        },
+      });
+      googleTypeId = googleType.id;
+    }
 
     const blueprintTraitValues = (blueprint.google_traits as string[] | null) ?? [];
-    const traitIds = blueprintTraitValues
-      .map(v => allTraits.find(t => t.value === v)?.id)
-      .filter((id): id is number => id !== undefined);
+    const traitIds: number[] = [];
+    for (const traitValue of blueprintTraitValues) {
+      const trait = await db.googleDeviceTrait.upsert({
+        where: { value: traitValue },
+        update: {},
+        create: {
+          value: traitValue,
+          name: traitValue.split('.').pop() ?? traitValue,
+        },
+      });
+      traitIds.push(trait.id);
+    }
 
     // Upsert DeviceAction as a type template only (no pins — those live on the instance)
     const deviceAction = await db.deviceAction.upsert({

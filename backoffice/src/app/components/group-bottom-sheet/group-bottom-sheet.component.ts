@@ -43,6 +43,9 @@ export class GroupBottomSheetComponent implements OnInit {
   dragUpActive = false;
   private draggingActionId: number | null = null;
 
+  // Prior action.state for in-flight commands, so action_state_failed can revert the UI.
+  private pendingPrevState = new Map<number, unknown>();
+
   iconForType = iconForDeviceType;
   hasTrait = hasTrait;
   colorOptions = COLOR_OPTIONS;
@@ -57,7 +60,36 @@ export class GroupBottomSheetComponent implements OnInit {
       .pipe(takeUntilDestroyed(this.destroyRef))
       .subscribe((data) => {
         const action = this.actions.find(a => a.id === data.actionId);
-        if (action) action.state = data.state;
+        if (action) {
+          action.state = data.state;
+          action.pending = false;
+          this.pendingPrevState.delete(data.actionId);
+        }
+      });
+
+    this.socketService.onActionStatePending()
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe((data) => {
+        const action = this.actions.find(a => a.id === data.actionId);
+        if (action) {
+          this.pendingPrevState.set(data.actionId, action.state);
+          action.state = data.state;
+          action.pending = true;
+        }
+      });
+
+    this.socketService.onActionStateFailed()
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe((data) => {
+        const action = this.actions.find(a => a.id === data.actionId);
+        if (action) {
+          if (this.pendingPrevState.has(data.actionId)) {
+            action.state = this.pendingPrevState.get(data.actionId);
+            this.pendingPrevState.delete(data.actionId);
+          }
+          action.pending = false;
+        }
+        this.snackBar.open('Device did not confirm the change', 'Close', { duration: 3000 });
       });
 
     this.socketService.onDeviceOnlineStatusChange()

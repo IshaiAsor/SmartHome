@@ -23,7 +23,6 @@ public:
         static const GoogleTraitDef traits[] = {
             { "action.devices.traits.OnOff",     "OnOff"     },
             { "action.devices.traits.FanSpeed",   "FanSpeed"  },
-            { "action.devices.traits.StartStop",  "StartStop" },
             { nullptr }
         };
         return traits;

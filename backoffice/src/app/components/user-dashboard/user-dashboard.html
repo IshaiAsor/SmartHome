@@ -39,7 +39,7 @@
                 </mat-menu>
             </div>
 
-            <div class="card-content">
+            <div class="card-content" [class.pending]="item.action!.pending">
                 @if (!item.action!.online) {
                 <div class="offline-overlay">
                     <mat-icon>wifi_off</mat-icon>

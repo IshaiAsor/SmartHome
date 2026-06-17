@@ -7,6 +7,7 @@
 #include <Preferences.h>
 #include <ArduinoJson.h>
 #include "mqtt.h"
+#include <actions/AckPublisher.h>
 #include "PreferencesManagerService.h"
 #include "JwtService.h"
 #include "actions/DynamicDeviceActionsService.h"
@@ -107,7 +108,15 @@ public:
             BaseCommandAction *deviceAction = getAction(action);
             if (deviceAction != nullptr)
             {
-                deviceAction->execute(message);
+                ActionResult result = deviceAction->execute(message);
+                Serial.print("Action execution result : ");
+                Serial.print(result.ok ? "OK" : "FAIL");
+                Serial.print(", Command ID: ");
+                Serial.print(result.commandId);
+                Serial.print(", Value: ");
+                Serial.println(result.value);
+                if (ackPublisher)
+                    ackPublisher(action, result.commandId.c_str(), result.ok, result.value.c_str());
                 return;
             }
         }

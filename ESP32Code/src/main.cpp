@@ -34,6 +34,7 @@
 #include "services/HttpFrameService.h"
 #endif
 #include "actions/commands/OnboardLedCommandAction.h"
+#include "actions/AckPublisher.h"
 const char *root_ca = certificate_root;
 
 unsigned long buttonPressTime = 0;
@@ -63,6 +64,13 @@ ProvisioningBleService provisioningBleService(&bleNotificationService, &dateTime
 BLECharacteristic *pCharacteristic;
 DynamicDeviceActionsService deviceActionsService;
 extern OnboardLedAction onboardLed;
+
+// Command actions report execution here; route it to the device's ack MQTT topic so the
+// backend writes the authoritative state only after the device actually executed.
+AckPublisherFn ackPublisher = [](const char *actionName, const char *commandId, bool ok, const char *value)
+{
+  mqttService.publishAck(actionName, commandId, ok, value);
+};
 #ifdef HAS_CAMERA
 LiveStreamService liveStreamService;
 LiveStreamService wsCaptureService;

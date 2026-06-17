@@ -1,5 +1,4 @@
 import type { Channel } from 'amqplib';
-import { publish, RK } from '@lattice/queue';
 import type { TelemetryArrivedPayload } from '@lattice/queue';
 import { createLogger } from '@lattice/logger';
 import { db } from '../db/client';
@@ -7,6 +6,7 @@ import { valkey, keys } from '../cache/valkey';
 import { resolveUserDeviceAction } from '../resolve';
 import { asString } from '../util';
 import { socket } from '../socket/emitter';
+import { writeScalarState } from '../state-write';
 
 const log = createLogger('digest-service:telemetry');
 
@@ -78,53 +78,13 @@ async function handleImage(
   // cooldown once the Pipeline model lands. The cached frame above feeds VLM/LLM stages.
 }
 
-// Scalar sensor reading. state write is authoritative; history/cache/socket/fan-out
-// are best-effort.
+// Scalar sensor reading. Delegates to the shared authoritative-state writer (also used
+// by the action-result/ack path) — state write is authoritative, the rest best-effort.
 async function handleScalar(
   ch: Channel,
   userActionId: number,
   payload: TelemetryArrivedPayload,
 ): Promise<void> {
   const { userId, deviceId, actionName, value, timestamp } = payload;
-  const stateValue = asString(value);
-
-  // 1. Authoritative state write — failure nacks → DLQ.
-  await db.userDeviceAction.update({
-    where: { id: userActionId },
-    data:  { current_state: stateValue, updated_at: new Date() },
-  });
-
-  // 2. Append to sensor history (best-effort).
-  try {
-    await db.sensorHistory.create({
-      data: {
-        user_device_action_id: userActionId,
-        value:                 stateValue,
-        recorded_at:           new Date(timestamp),
-      },
-    });
-  } catch (err) {
-    log.error({ err, userActionId }, 'sensor_history insert failed');
-  }
-
-  // 3. Hot cache (best-effort).
-  try {
-    await valkey.set(keys.actionState(userActionId), stateValue, 'EX', 3600);
-  } catch (err) {
-    log.error({ err, userActionId }, 'valkey action_state set failed');
-  }
-
-  // 4. Push to the UI (best-effort).
-  try {
-    socket.emitActionStateUpdate(parseInt(userId, 10), userActionId, value);
-  } catch (err) {
-    log.error({ err, userActionId }, 'socket emit failed');
-  }
-
-  // 5. Fan out to rules evaluation (best-effort).
-  try {
-    publish(ch, RK.RULES_EVALUATE, { userId, deviceId, actionName, value, timestamp });
-  } catch (err) {
-    log.error({ err, userActionId }, 'rules.evaluate publish failed');
-  }
+  await writeScalarState(ch, userActionId, { userId, deviceId, actionName, value, timestamp });
 }

@@ -10,6 +10,7 @@ const char DEVICE_VERSION[] = DEVICE_VERSION_STR;
 const char COMMAND_TOPIC[] = "users/%{userid}/devices/%{deviceid}/%{version}/command/#";
 const char STATUS_TOPIC[] = "users/%{userid}/devices/%{deviceid}/%{version}/status";
 const char TELEMETRY_TOPIC[] = "users/%{userid}/devices/%{deviceid}/%{version}/telemetry/#";
+const char ACK_TOPIC[] = "users/%{userid}/devices/%{deviceid}/%{version}/ack/#";
 const char OTA_TOPIC[] = "ota/updates/%{devicetype}";
 const char AP_HOTSPOT_NAME[] = "SmartOutlet_Setup";
 const char AP_HOTSPOT_PASSWORD[] = ""; // Open network for easier provisioning

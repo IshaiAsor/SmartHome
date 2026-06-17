@@ -125,6 +125,9 @@ export interface DeviceActionView {
   sortOrder: number;
   groupName: string | null;
   implementation_type: string;
+  // Transient UI flag: a command was sent and is awaiting the device's ack. Set on
+  // action_state_pending, cleared on action_state_update / action_state_failed. Not persisted.
+  pending?: boolean;
 }
 
 export interface DeviceActionPinView {

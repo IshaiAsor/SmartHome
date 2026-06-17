@@ -17,6 +17,9 @@ export const RK = {
   // then publishes ACTION_DISPATCH for the device.
   ACTION_REQUESTED:             'action.requested',
   ACTION_DISPATCH:              'action.dispatch',
+  // A device's ack that it executed (or rejected) a command. digest writes the
+  // authoritative current_state on success and resolves the in-flight pending request.
+  ACTION_RESULT:                'action.result',
   PIPELINE_STAGE_SENSOR_DIGEST: 'pipeline.stage.sensor_digest',
   PIPELINE_STAGE_COMMAND_EXEC:  'pipeline.stage.command_exec',
   PIPELINE_STAGE_DONE:          'pipeline.stage.done.v1',
@@ -39,6 +42,7 @@ export const QUEUES = {
   DEVICE_STATE_CHANGED:         'q.device.state.changed',
   ACTION_REQUESTED:             'q.action.requested',
   ACTION_DISPATCH:              'q.action.dispatch',
+  ACTION_RESULT:                'q.action.result',
   PIPELINE_STAGE_SENSOR_DIGEST: 'q.pipeline.stage.sensor_digest',
   PIPELINE_STAGE_COMMAND_EXEC:  'q.pipeline.stage.command_exec',
   PIPELINE_STAGE_DONE:          'q.pipeline.stage.done',
@@ -69,6 +73,7 @@ const STATIC_QUEUE_BINDINGS: Array<[string, string]> = [
   [QUEUES.DEVICE_STATE_CHANGED,         RK.DEVICE_STATE_CHANGED],
   [QUEUES.ACTION_REQUESTED,             RK.ACTION_REQUESTED],
   [QUEUES.ACTION_DISPATCH,              RK.ACTION_DISPATCH],
+  [QUEUES.ACTION_RESULT,                RK.ACTION_RESULT],
   [QUEUES.PIPELINE_STAGE_SENSOR_DIGEST, RK.PIPELINE_STAGE_SENSOR_DIGEST],
   [QUEUES.PIPELINE_STAGE_COMMAND_EXEC,  RK.PIPELINE_STAGE_COMMAND_EXEC],
   [QUEUES.PIPELINE_STAGE_DONE,          RK.PIPELINE_STAGE_DONE],

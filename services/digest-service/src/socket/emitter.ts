@@ -16,6 +16,23 @@ export const socket = {
       state,
     });
   },
+  // A command was dispatched and is awaiting the device's ack. The UI shows the desired
+  // value as pending until a confirming action_state_update (or a failed event) arrives.
+  emitActionStatePending(userId: number, userDeviceActionId: number, commandId: string, state: unknown): void {
+    emitter.to(`user_${userId}`).emit('action_state_pending', {
+      actionId: userDeviceActionId,
+      commandId,
+      state,
+    });
+  },
+  // The device rejected the command or never acked within the timeout. The UI reverts the
+  // pending toggle; no DB state was written.
+  emitActionStateFailed(userId: number, userDeviceActionId: number, commandId: string): void {
+    emitter.to(`user_${userId}`).emit('action_state_failed', {
+      actionId: userDeviceActionId,
+      commandId,
+    });
+  },
   emitDeviceStatusChange(userId: number, userDeviceId: number, online: boolean): void {
     emitter.to(`user_${userId}`).emit('device_status_change', {
       deviceId: userDeviceId,

@@ -39,6 +39,25 @@ export class DeviceSocketService {
     });
   }
 
+  // A command was dispatched and is awaiting the device's ack. Confirmed state arrives
+  // later via onActionStateUpdate; if the device never acks, onActionStateFailed fires.
+  onActionStatePending(): Observable<{ actionId: number, commandId: string, state: unknown }> {
+    return new Observable((observer) => {
+      this.socket.on('action_state_pending', (data) => {
+        observer.next(data);
+      });
+    });
+  }
+
+  // The device rejected the command or never acked within the timeout — no state changed.
+  onActionStateFailed(): Observable<{ actionId: number, commandId: string }> {
+    return new Observable((observer) => {
+      this.socket.on('action_state_failed', (data) => {
+        observer.next(data);
+      });
+    });
+  }
+
   disconnect() {
     this.socket.disconnect();
   }

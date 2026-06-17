@@ -8,6 +8,7 @@ import { valkey } from './cache/valkey';
 import { telemetryConsumer } from './consumers/telemetry.consumer';
 import { deviceStatusConsumer } from './consumers/device-status.consumer';
 import { actionRequestedConsumer } from './consumers/action-requested.consumer';
+import { actionResultConsumer } from './consumers/action-result.consumer';
 import { otaIncomingConsumer } from './consumers/ota-incoming.consumer';
 import { healthRouter } from './routes/health.routes';
 
@@ -27,8 +28,9 @@ async function main() {
   await consume(ch, QUEUES.TELEMETRY_ARRIVED, telemetryConsumer(ch));
   await consume(ch, QUEUES.DEVICE_STATE_CHANGED, deviceStatusConsumer());
   await consume(ch, QUEUES.ACTION_REQUESTED, actionRequestedConsumer(ch));
+  await consume(ch, QUEUES.ACTION_RESULT, actionResultConsumer(ch));
   await consume(ch, QUEUES.OTA_INCOMING, otaIncomingConsumer(ch));
-  log.info('consumers started (telemetry, device-status, action-requested, ota-incoming)');
+  log.info('consumers started (telemetry, device-status, action-requested, action-result, ota-incoming)');
 
   const app = express();
   app.use(healthRouter);

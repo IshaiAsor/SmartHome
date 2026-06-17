@@ -20,9 +20,6 @@ public:
     static const GoogleTraitDef* supportedTraits() {
         static const GoogleTraitDef traits[] = {
             { "action.devices.traits.OnOff",     "OnOff"     },
-            { "action.devices.traits.LockUnlock", "LockUnlock" },
-            { "action.devices.traits.StartStop",  "StartStop"  },
-            { "action.devices.traits.OpenClose",  "OpenClose"  },
             { nullptr }
         };
         return traits;

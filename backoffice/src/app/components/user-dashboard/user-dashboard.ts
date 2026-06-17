@@ -47,6 +47,9 @@ export class UserDashboard implements OnInit {
   private lastPointerPos = { x: 0, y: 0 };
   private draggingActionId: number | null = null;
 
+  // Prior action.state for in-flight commands, so action_state_failed can revert the UI.
+  private pendingPrevState = new Map<number, unknown>();
+
   @HostListener('document:pointerup')
   onDocumentPointerUp() { this.draggingActionId = null; }
 
@@ -58,7 +61,41 @@ export class UserDashboard implements OnInit {
       .pipe(takeUntilDestroyed(this.destroyRef))
       .subscribe((data) => {
         const action = this.findAction(data.actionId);
-        if (action) action.state = data.state;
+        if (action) {
+          action.state = data.state;
+          action.pending = false;        // confirmed by the device
+          this.pendingPrevState.delete(data.actionId);
+        }
+      });
+
+    // A command is in flight: show the intended value but mark it pending until the device
+    // acks. Stash the prior value so a failure can revert it.
+    this.socketService
+      .onActionStatePending()
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe((data) => {
+        const action = this.findAction(data.actionId);
+        if (action) {
+          this.pendingPrevState.set(data.actionId, action.state);
+          action.state = data.state;
+          action.pending = true;
+        }
+      });
+
+    // The device rejected the command or never acked — revert to the prior value.
+    this.socketService
+      .onActionStateFailed()
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe((data) => {
+        const action = this.findAction(data.actionId);
+        if (action) {
+          if (this.pendingPrevState.has(data.actionId)) {
+            action.state = this.pendingPrevState.get(data.actionId);
+            this.pendingPrevState.delete(data.actionId);
+          }
+          action.pending = false;
+        }
+        this.snackBar.open('Device did not confirm the change', 'Close', { duration: 3000 });
       });
 
     this.socketService

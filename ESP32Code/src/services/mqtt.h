@@ -255,4 +255,43 @@ public:
             Serial.println("Cannot publish telemetry: MQTT client not connected.");
         }
     }
+
+    // Acknowledge a command's execution back to the backend so it can write the
+    // authoritative state. Body: {"commandId":"...","status":"ok|error","value":"..."}.
+    // commandId is omitted for unsolicited changes (auto-off, boot restore). Published at
+    // PubSubClient's QoS 0 (its only level); the backend's no-ack timeout covers a lost
+    // ack. No-op if MQTT/creds aren't ready yet (e.g. boot state restore before the first
+    // connect) — the backend reconciles via periodic telemetry in that case.
+    void publishAck(const char *actionName, const char *commandId, bool ok, const char *value)
+    {
+        Serial.print("Publishing ack for action '");
+        Serial.print(actionName);
+        Serial.print("': ");
+        Serial.print(ok ? "OK" : "FAIL");
+        Serial.print(", Command ID: ");
+        Serial.print(commandId);
+        Serial.print(", Value: ");
+        Serial.println(value);
+        
+        if (client == nullptr || !client->connected() || creds == nullptr)
+        {
+            Serial.println("Cannot publish ack: MQTT client not connected.");
+            return;
+        }
+        String ackTopicStr = String(ACK_TOPIC);
+        ackTopicStr.replace("%{userid}", creds->userId.c_str());
+        ackTopicStr.replace("%{deviceid}", creds->clientId.c_str());
+        ackTopicStr.replace("%{version}", DEVICE_VERSION);
+        ackTopicStr.replace("#", actionName);
+
+        JsonDocument doc;
+        if (commandId != nullptr && strlen(commandId) > 0)
+            doc["commandId"] = commandId;
+        doc["status"] = ok ? "ok" : "error";
+        doc["value"] = value;
+
+        String payload;
+        serializeJson(doc, payload);
+        client->publish(ackTopicStr.c_str(), payload.c_str(), false);
+    }
 };

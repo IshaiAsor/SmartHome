@@ -18,6 +18,9 @@ export const keys = {
   // Resolution cache: (deviceId string, actionName) → "{id}:{kind}".
   actionResolve: (deviceId: string, actionName: string) =>
     `action_resolve:${deviceId}:${actionName}`,
+  // In-flight command awaiting a device ack. Holds the request context so the ack /
+  // timeout can resolve it. TTL-backed so it self-clears if the process dies.
+  pendingCommand: (commandId: string) => `pending_command:${commandId}`,
 };
 
 // Whether a telemetry value is a scalar sensor reading or an image/camera frame.

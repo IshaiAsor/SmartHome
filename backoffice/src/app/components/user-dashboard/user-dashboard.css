@@ -137,6 +137,16 @@
   padding: 12px;
 }
 
+/* Command dispatched, awaiting the device's ack — soft pulse until confirmed/failed. */
+.card-content.pending {
+  animation: card-pending-pulse 1s ease-in-out infinite;
+}
+
+@keyframes card-pending-pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.55; }
+}
+
 /* ── Offline overlay ────────────────────────────────────────────── */
 .offline-overlay {
   position: absolute;
