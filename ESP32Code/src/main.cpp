@@ -90,6 +90,7 @@ void setup()
   Serial.println(DEVICE_TYPE);
   Serial.print("Firmware Version: ");
   Serial.println(DEVICE_VERSION);
+  
 #ifdef BOARD_HAS_PSRAM
   if (psramFound())
   {
