@@ -46,6 +46,35 @@
     {
         "type": "node",
         "request": "launch",
+        "name": "Catalog: Generate Manifests",
+        "runtimeExecutable": "node",
+        "program": "${workspaceFolder:ESP32 Firmware}/tools/generate-manifests.mjs",
+        "cwd": "${workspaceFolder:Prisma}",
+        "skipFiles": ["<node_internals>/**"],
+        "presentation": { "group": "catalog" }
+    },
+    {
+        "type": "node",
+        "request": "launch",
+        "name": "Catalog: Seed DB",
+        "runtimeArgs": [
+            "-r",
+            "ts-node/register"
+        ],
+        "program": "${workspaceFolder:Prisma}/seed-catalog.ts",
+        "cwd": "${workspaceFolder:Prisma}",
+        "outFiles": ["${workspaceFolder:Prisma}/**/*.js"],
+        "envFile": "${workspaceFolder:Project Root}/.env",
+        "env": {
+            "TS_NODE_PROJECT": "${workspaceFolder:Prisma}/tsconfig.json"
+        },
+        "preLaunchTask": "catalog:gen",
+        "skipFiles": ["<node_internals>/**"],
+        "presentation": { "group": "catalog" }
+    },
+    {
+        "type": "node",
+        "request": "launch",
         "name": "Debug Backend (ts-node)",
         "runtimeArgs": [
             "-r",

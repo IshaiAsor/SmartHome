@@ -207,6 +207,26 @@
         "cwd": "${workspaceFolder:ESP32 Firmware}"
       },
       "label": "PlatformIO: Build (ESP32Code)"
+    },
+    {
+      "label": "catalog:gen",
+      "type": "shell",
+      "command": "npm run catalog:gen",
+      "options": {
+        "cwd": "${workspaceFolder:Prisma}"
+      },
+      "presentation": { "reveal": "always", "panel": "dedicated" },
+      "problemMatcher": []
+    },
+    {
+      "label": "catalog:seed",
+      "type": "shell",
+      "command": "npm run catalog:seed",
+      "options": {
+        "cwd": "${workspaceFolder:Prisma}"
+      },
+      "presentation": { "reveal": "always", "panel": "dedicated" },
+      "problemMatcher": []
     }
   ]
 }
