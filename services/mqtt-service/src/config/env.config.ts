@@ -9,6 +9,7 @@ export const env = {
     port:           parseInt(process.env['MQTT_PORT'] ?? '1883', 10),
     username:       process.env['MQTT_APP_USERNAME'] ?? '',
     password:       process.env['MQTT_APP_PASSWORD'] ?? '',
+    clientId:       process.env['MQTT_CLIENT_ID'],
     caCertPath:     process.env['MQTT_CA_CERT_PATH'],
     validateCert:   process.env['MQTT_VALIDATE_CERT'] === 'true',
     serverName:     process.env['MQTT_SERVER_NAME'],

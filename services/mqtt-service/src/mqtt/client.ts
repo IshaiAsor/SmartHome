@@ -11,6 +11,7 @@ interface MqttEnv {
   port: number;
   username: string;
   password: string;
+  clientId?: string;
   caCertPath?: string;
   validateCert: boolean;
   serverName?: string;
@@ -25,6 +26,7 @@ export function createMqttClient(cfg: MqttEnv): MqttClient {
     protocol:          useTls ? 'mqtts' : 'mqtt',
     username:          cfg.username,
     password:          cfg.password,
+    clientId:          cfg.clientId,
     rejectUnauthorized: cfg.validateCert,
     servername:        cfg.serverName,
     checkServerIdentity: (host: string, cert: tls.PeerCertificate) => {

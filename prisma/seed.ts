@@ -47,7 +47,7 @@ async function main() {
   await pool.query(
     `INSERT INTO mqtt_user (username, password_hash, is_superuser)
      VALUES ($1, $2, true)
-     ON CONFLICT (username) DO UPDATE SET password_hash = EXCLUDED.password_hash`,
+     ON CONFLICT (username) DO UPDATE SET password_hash = EXCLUDED.password_hash, is_superuser = EXCLUDED.is_superuser`,
     [mqttUsername, await bcrypt.hash(mqttPassword, 10)]
   );
 
