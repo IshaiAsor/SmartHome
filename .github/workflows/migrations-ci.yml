@@ -5,7 +5,7 @@ on:
     branches: ["main", "master"]
     paths:
       - 'prisma/**'
-      - 'ESP32Code/tools/manifest-gen/out/**'
+      - 'ESP32Code/platformio.ini'
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
