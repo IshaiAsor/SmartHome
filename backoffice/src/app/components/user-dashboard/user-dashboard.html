@@ -5,11 +5,14 @@
      (cdkDropListDropped)="drop($event)">
     @for (item of items; track itemTrackId(item); let i = $index) {
     <div class="device-card-wrapper" cdkDrag [cdkDragData]="item"
+        [class.deprecated-card]="item.action?.status === 'deprecated'"
          [attr.data-item-index]="i"
          [class.group-hover]="groupDropTargetIndex === i"
          (cdkDragStarted)="onDragStarted(i)"
          (cdkDragMoved)="onDragMoved($event)"
          (cdkDragEnded)="onDragEnded()">
+
+        
 
         <div class="drag-rail" cdkDragHandle>
             <div class="drag-rail-dots">
@@ -19,11 +22,14 @@
         </div>
 
         @if (item.kind === 'action') {
-        <div class="device-card" [ngClass]="item.action!.online ? 'card-enabled' : 'card-disabled'">
+        <div class="device-card" [ngClass]="(item.action!.online && item.action?.status === 'active') ? 'card-enabled' : 'card-disabled'">
             <div class="card-header">
                 <span class="material-symbols-outlined device-icon">
                     {{ iconForAction(item.action!) }}
                 </span>
+                 @if (item.action?.status === 'deprecated') {
+            <span class="deprecated-badge" matTooltip="This action is incompatible with the current firmware version">deprecated</span>
+        }
                 <span class="card-name">{{ item.action!.name }}</span>
                 <span class="header-spacer"></span>
                 <span class="status-dot" [class.online]="item.action!.online" [class.offline]="!item.action!.online"
