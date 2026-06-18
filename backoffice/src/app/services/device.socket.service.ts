@@ -31,7 +31,7 @@ export class DeviceSocketService {
     });
   }
 
-  onActionStateUpdate(): Observable<{ actionId: number, state: unknown }> {
+  onActionStateUpdate(): Observable<{ actionId: number, state: unknown, commandId?: string }> {
     return new Observable((observer) => {
       this.socket.on('action_state_update', (data) => {
         observer.next(data);

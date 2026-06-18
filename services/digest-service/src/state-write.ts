@@ -14,6 +14,9 @@ export interface ScalarStateInput {
   actionName: string;
   value:      unknown;
   timestamp:  string;
+  // Present for device acks, absent for telemetry. Forwarded to the UI so it can ignore
+  // stale updates when two commands for the same action are in flight concurrently.
+  commandId?: string;
 }
 
 // Authoritative write of a confirmed scalar state for a UserDeviceAction. Shared by the
@@ -26,7 +29,7 @@ export async function writeScalarState(
   userActionId: number,
   input: ScalarStateInput,
 ): Promise<void> {
-  const { userId, deviceId, actionName, value, timestamp } = input;
+  const { userId, deviceId, actionName, value, timestamp, commandId } = input;
   const stateValue = asString(value);
 
   log.info({ userActionId, userId, deviceId, actionName, value }, 'writing scalar state');
@@ -58,7 +61,7 @@ export async function writeScalarState(
 
   // 4. Push to the UI (best-effort).
   try {
-    socket.emitActionStateUpdate(parseInt(userId, 10), userActionId, value);
+    socket.emitActionStateUpdate(parseInt(userId, 10), userActionId, value, commandId);
   } catch (err) {
     log.error({ err, userActionId }, 'socket emit failed');
   }

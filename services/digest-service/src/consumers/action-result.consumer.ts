@@ -46,6 +46,6 @@ export function actionResultConsumer(ch: Channel) {
       throw new Error(`unresolved action ${deviceId}/${actionName}`);
     }
 
-    await writeScalarState(ch, resolved.id, { userId, deviceId, actionName, value, timestamp });
+    await writeScalarState(ch, resolved.id, { userId, deviceId, actionName, value, timestamp, commandId });
   };
 }

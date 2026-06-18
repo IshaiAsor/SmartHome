@@ -49,6 +49,9 @@ export class UserDashboard implements OnInit {
 
   // Prior action.state for in-flight commands, so action_state_failed can revert the UI.
   private pendingPrevState = new Map<number, unknown>();
+  // Latest commandId dispatched per action. Only that commandId's ack clears pending=true,
+  // preventing a stale concurrent ack from clobbering a more recent command's state.
+  private latestCommandId = new Map<number, string>();
 
   @HostListener('document:pointerup')
   onDocumentPointerUp() { this.draggingActionId = null; }
@@ -63,8 +66,15 @@ export class UserDashboard implements OnInit {
         const action = this.findAction(data.actionId);
         if (action) {
           action.state = data.state;
-          action.pending = false;        // confirmed by the device
-          this.pendingPrevState.delete(data.actionId);
+          // Only clear pending when this is the latest in-flight commandId. A stale
+          // concurrent ack for an older command must not clobber a newer command's pending.
+          const isLatest = !data.commandId || this.latestCommandId.get(data.actionId) === data.commandId;
+          if (isLatest) {
+            action.pending = false;
+            this.latestCommandId.delete(data.actionId);
+            this.pendingPrevState.delete(data.actionId);
+            this.snackBar.open('Device confirmed the change', 'Close', { duration: 3000 });
+          }
         }
       });
 
@@ -76,7 +86,12 @@ export class UserDashboard implements OnInit {
       .subscribe((data) => {
         const action = this.findAction(data.actionId);
         if (action) {
-          this.pendingPrevState.set(data.actionId, action.state);
+          // Only stash prevState if the action is currently settled (not already pending),
+          // so we preserve the last *confirmed* state rather than an intermediate pending value.
+          if (!action.pending) {
+            this.pendingPrevState.set(data.actionId, action.state);
+          }
+          this.latestCommandId.set(data.actionId, data.commandId);
           action.state = data.state;
           action.pending = true;
         }
@@ -89,10 +104,12 @@ export class UserDashboard implements OnInit {
       .subscribe((data) => {
         const action = this.findAction(data.actionId);
         if (action) {
-          if (this.pendingPrevState.has(data.actionId)) {
-            action.state = data.lastState;
-            this.pendingPrevState.delete(data.actionId);
-          }
+          // lastState is provided by the timeout path; device-rejection omits it.
+          // Fall back to the locally stashed prevState when it's missing.
+          const revertTo = data.lastState ?? this.pendingPrevState.get(data.actionId);
+          if (revertTo !== undefined) action.state = revertTo;
+          this.pendingPrevState.delete(data.actionId);
+          this.latestCommandId.delete(data.actionId);
           action.pending = false;
         }
         this.snackBar.open('Device did not confirm the change', 'Close', { duration: 3000 });

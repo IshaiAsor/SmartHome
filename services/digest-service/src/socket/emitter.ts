@@ -10,10 +10,11 @@ const emitter = new Emitter(valkey as never);
 export const socket = {
   // Scalar readings AND camera frames both flow through this — the UI keys live updates by
   // action id (a camera frame is just the action's state as a base64 JPEG).
-  emitActionStateUpdate(userId: number, userDeviceActionId: number, state: unknown): void {
+  emitActionStateUpdate(userId: number, userDeviceActionId: number, state: unknown, commandId?: string): void {
     emitter.to(`user_${userId}`).emit('action_state_update', {
       actionId: userDeviceActionId,
       state,
+      commandId,
     });
   },
   // A command was dispatched and is awaiting the device's ack. The UI shows the desired
