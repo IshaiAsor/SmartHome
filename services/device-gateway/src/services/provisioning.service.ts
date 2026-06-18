@@ -37,6 +37,7 @@ class ProvisioningService {
     capabilities: CapabilityInput[],
   ) {
     // 1. The firmware's (type, version) must already exist in the catalog.
+    log.debug({ userId, macAddress, deviceType, version, capabilities }, 'provisioning device');
     const device = await db.device.findUnique({
       where: { type_version: { type: deviceType, version } },
     });
@@ -60,7 +61,9 @@ class ProvisioningService {
     });
 
     // 4. Return permanent JWT + URLs.
-    return this.generatePermanentToken(userId, userDevice.id, version);
+    const tokenData = this.generatePermanentToken(userId, userDevice.id, version);
+    log.debug({ userId, macAddress, deviceType, version, tokenData }, 'provisioned device');
+    return tokenData;
   }
 
   private async warnOnCapabilityMismatch(
