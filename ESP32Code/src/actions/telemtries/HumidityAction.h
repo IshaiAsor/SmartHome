@@ -3,33 +3,15 @@
 #include <Arduino.h>
 #include <Wire.h>
 #include "actions/telemtries/BaseTelemtryAction.h"
+#include "actions/manifest/CapabilityRegistry.h"
 
 class HumidityAction : public BaseTelemetryAction
 {
 public:
-    static const PinSlotDef* blueprint() {
-        static const PinSlotDef slots[] = {
-            { "sda", "I2C SDA (SHT41)", INPUT },
-            { "scl", "I2C SCL (SHT41)", INPUT },
-            { nullptr }
-        };
-        return slots;
-    }
-
-    static const char* googleActionType() { return "action.devices.types.SENSOR"; }
-
-    static const GoogleTraitDef* supportedTraits() {
-        static const GoogleTraitDef traits[] = {
-            { "action.devices.traits.HumiditySetting", "HumiditySetting" },
-            { nullptr }
-        };
-        return traits;
-    }
-
-    static CapabilityDescriptor capability() {
-        return { "humidity", "Humidity Sensor", "HumidityAction", "telemetry", "humidity",
-                 googleActionType(), supportedTraits(), 2000, blueprint() };
-    }
+    static const PinSlotDef* blueprint() { return CapabilityRegistry::humidity().pins; }
+    static const char* googleActionType() { return CapabilityRegistry::humidity().googleType; }
+    static const GoogleTraitDef* supportedTraits() { return CapabilityRegistry::humidity().traits; }
+    static CapabilityDescriptor capability() { return CapabilityRegistry::humidity(); }
 
 private:
     int sdaPin;

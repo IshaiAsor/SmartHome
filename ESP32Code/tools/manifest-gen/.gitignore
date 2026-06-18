@@ -1,0 +1,3 @@
+# Host build output and generated manifests — regenerated from CapabilityRegistry.h.
+.pio/
+out/

@@ -1,7 +1,16 @@
-import { Prisma } from '@lattice/prisma-client';
 import { db } from '../db';
 import { jwtService, JwtPurpose } from './jwt.service';
 import { env } from '../config/env.config';
+import { createLogger } from '@lattice/logger';
+
+const log = createLogger('device-gateway');
+
+export class HttpError extends Error {
+  constructor(public statusCode: number, message: string) {
+    super(message);
+    this.name = 'HttpError';
+  }
+}
 
 export interface CapabilityInput {
   capability_key: string;
@@ -16,8 +25,10 @@ export interface CapabilityInput {
 }
 
 class ProvisioningService {
-  // Device-facing single call: upsert device type, capability blueprints, and the
-  // user_device (by mac — re-provisioning always works), then return a permanent JWT.
+  // Device-facing single call. The catalog (device type + capability blueprints) is no
+  // longer written here — it is published from firmware source by the manifest generator
+  // (locally `npm run catalog:seed`, in prod the CI ingest). Provisioning only VALIDATES
+  // the firmware's (type, version) against that catalog, then binds the user_device.
   async provisionDevice(
     userId: number,
     macAddress: string,
@@ -25,31 +36,21 @@ class ProvisioningService {
     version: string,
     capabilities: CapabilityInput[],
   ) {
-    // 1. Upsert device type row.
-    const device = await db.device.upsert({
+    // 1. The firmware's (type, version) must already exist in the catalog.
+    const device = await db.device.findUnique({
       where: { type_version: { type: deviceType, version } },
-      update: {},
-      create: { type: deviceType, version, default_name: `${deviceType} ${version}` },
     });
-
-    // 2. Upsert capability blueprints declared by the firmware.
-    for (const cap of capabilities) {
-      const data = {
-        label: cap.label,
-        implementation_type: cap.implementation_type,
-        mqtt_action_type: cap.mqtt_action_type,
-        mqtt_action_name: cap.mqtt_action_name,
-        configurable_pins: cap.configurable_pins ?? [],
-        min_telemetry_interval_ms: cap.min_telemetry_interval_ms ?? null,
-        google_action_type: cap.google_action_type ?? null,
-        google_traits: cap.google_traits ?? Prisma.JsonNull,
-      };
-      await db.deviceCapabilityBlueprint.upsert({
-        where: { device_id_capability_key: { device_id: device.id, capability_key: cap.capability_key } },
-        update: data,
-        create: { device_id: device.id, capability_key: cap.capability_key, ...data },
-      });
+    if (!device) {
+      throw new HttpError(
+        409,
+        `Unknown firmware (type=${deviceType}, version=${version}) — not in device catalog. ` +
+          `Publish its manifest first (local: npm run catalog:seed; prod: CI manifest ingest).`,
+      );
     }
+
+    // 2. Cross-check the device-reported capabilities against the catalog (log-only).
+    //    The catalog is authoritative; a mismatch flags tampering or a stale build.
+    await this.warnOnCapabilityMismatch(device.id, deviceType, version, capabilities);
 
     // 3. Upsert user_device by mac_id.
     const userDevice = await db.userDevice.upsert({
@@ -60,6 +61,28 @@ class ProvisioningService {
 
     // 4. Return permanent JWT + URLs.
     return this.generatePermanentToken(userId, userDevice.id, version);
+  }
+
+  private async warnOnCapabilityMismatch(
+    deviceId: number,
+    deviceType: string,
+    version: string,
+    reported: CapabilityInput[],
+  ) {
+    const blueprints = await db.deviceCapabilityBlueprint.findMany({
+      where: { device_id: deviceId },
+      select: { capability_key: true },
+    });
+    const catalogKeys = new Set(blueprints.map((b) => b.capability_key));
+    const reportedKeys = new Set(reported.map((c) => c.capability_key));
+    const extra = [...reportedKeys].filter((k) => !catalogKeys.has(k));
+    const missing = [...catalogKeys].filter((k) => !reportedKeys.has(k));
+    if (extra.length || missing.length) {
+      log.warn(
+        { deviceType, version, extra, missing },
+        'device-reported capabilities differ from catalog manifest',
+      );
+    }
   }
 
   refreshMqttToken(refreshToken: string) {

@@ -3,35 +3,15 @@
 #include <string>
 #include <Arduino.h>
 #include "BaseCommandAction.h"
+#include "actions/manifest/CapabilityRegistry.h"
 
 class OneDirectionalMotorAction : public BaseCommandAction
 {
 public:
-    static const PinSlotDef* blueprint() {
-        static const PinSlotDef slots[] = {
-            { "in1", "Direction Pin 1 (IN1)", OUTPUT },
-            { "in2", "Direction Pin 2 (IN2)", OUTPUT },
-            { "pwm", "Speed Pin (PWM)",       OUTPUT },
-            { nullptr }
-        };
-        return slots;
-    }
-
-    static const char* googleActionType() { return "action.devices.types.FAN"; }
-
-    static const GoogleTraitDef* supportedTraits() {
-        static const GoogleTraitDef traits[] = {
-            { "action.devices.traits.OnOff",     "OnOff"     },
-            { "action.devices.traits.FanSpeed",   "FanSpeed"  },
-            { nullptr }
-        };
-        return traits;
-    }
-
-    static CapabilityDescriptor capability() {
-        return { "fan", "Fan", "OneDirectionalMotorAction", "command", "fan",
-                 googleActionType(), supportedTraits(), 0, blueprint() };
-    }
+    static const PinSlotDef* blueprint() { return CapabilityRegistry::fan().pins; }
+    static const char* googleActionType() { return CapabilityRegistry::fan().googleType; }
+    static const GoogleTraitDef* supportedTraits() { return CapabilityRegistry::fan().traits; }
+    static CapabilityDescriptor capability() { return CapabilityRegistry::fan(); }
 
 private:
     int in1PinNumber;

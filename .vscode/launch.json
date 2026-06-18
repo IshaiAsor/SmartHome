@@ -210,6 +210,54 @@
         "outFiles": ["${workspaceFolder:Socket Server}/**/*.js"]
     },
     {
+        "name": "Debug Automation Worker (dev + hot reload)",
+        "type": "node",
+        "request": "launch",
+        "cwd": "${workspaceFolder:Project Root}",
+        "runtimeExecutable": "npx",
+        "runtimeArgs": [
+            "@dotenvx/dotenvx", "run", "--",
+            "npx", "nodemon",
+            "--cwd", "services/automation-worker",
+            "--exec", "node -r ts-node/register",
+            "--ext", "ts,json",
+            "src/index.ts"
+        ],
+        "env": { "TS_NODE_PROJECT": "tsconfig.json", "PORT": "3008" },
+        "console": "internalConsole",
+        "outputCapture": "std",
+        "autoAttachChildProcesses": true,
+        "restart": true,
+        "preLaunchTask": "prep-automation-worker",
+        "skipFiles": ["<node_internals>/**"],
+        "sourceMaps": true,
+        "outFiles": ["${workspaceFolder:Automation Worker}/**/*.js"]
+    },
+    {
+        "name": "Debug Google Home (dev + hot reload)",
+        "type": "node",
+        "request": "launch",
+        "cwd": "${workspaceFolder:Project Root}",
+        "runtimeExecutable": "npx",
+        "runtimeArgs": [
+            "@dotenvx/dotenvx", "run", "--",
+            "npx", "nodemon",
+            "--cwd", "services/google-home",
+            "--exec", "node -r ts-node/register",
+            "--ext", "ts,json",
+            "src/index.ts"
+        ],
+        "env": { "TS_NODE_PROJECT": "tsconfig.json", "PORT": "3010" },
+        "console": "internalConsole",
+        "outputCapture": "std",
+        "autoAttachChildProcesses": true,
+        "restart": true,
+        "preLaunchTask": "prep-google-home",
+        "skipFiles": ["<node_internals>/**"],
+        "sourceMaps": true,
+        "outFiles": ["${workspaceFolder:Google Home}/**/*.js"]
+    },
+    {
         "name": "Debug OTA Manager (dev + hot reload)",
         "type": "node",
         "request": "launch",
@@ -262,7 +310,7 @@
     },
     {
         "name": "All Backend Services (dev)",
-        "configurations": ["Debug Backend (dev + hot reload)", "Debug ML Router (dev + hot reload)", "Debug Device Gateway (dev + hot reload)", "Debug MQTT Service (dev + hot reload)", "Debug Digest Service (dev + hot reload)", "Debug Socket Server (dev + hot reload)", "Debug OTA Manager (dev + hot reload)"]
+        "configurations": ["Debug Backend (dev + hot reload)", "Debug ML Router (dev + hot reload)", "Debug Device Gateway (dev + hot reload)", "Debug MQTT Service (dev + hot reload)", "Debug Digest Service (dev + hot reload)", "Debug Socket Server (dev + hot reload)", "Debug Automation Worker (dev + hot reload)", "Debug Google Home (dev + hot reload)", "Debug OTA Manager (dev + hot reload)"]
     }
     ]
 }

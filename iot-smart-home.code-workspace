@@ -48,6 +48,14 @@
       "name": "OTA Manager",
       "path": "services/ota-manager",
     },
+    {
+      "name": "Automation Worker",
+      "path": "services/automation-worker",
+    },
+    {
+      "name": "Google Home",
+      "path": "services/google-home",
+    },
   ],
   "settings": {
     "files.exclude": {

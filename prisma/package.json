@@ -6,7 +6,9 @@
   },
   "scripts": {
     "migrate:deploy": "npx prisma migrate deploy",
-    "seed": "npx prisma db seed"
+    "seed": "npx prisma db seed",
+    "catalog:gen": "node ../ESP32Code/tools/generate-manifests.mjs",
+    "catalog:seed": "npm run catalog:gen && ts-node seed-catalog.ts"
   },
   "devDependencies": {
     "@prisma/client": "^7.8.0",

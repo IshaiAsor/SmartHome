@@ -254,3 +254,36 @@ jobs:
       # (firmware-staging → firmware-prod), the ota-manager init container runs entrypoint.sh
       # to write <version>.bin + latest.json, and the ota-manager republishes the retained
       # ota/updates/<deviceType> messages on connect. No HTTP /release from CI.
+
+  # Generate capability manifests from firmware source and upload as a CI artifact.
+  # out/ is not committed to git — manifests are generated fresh here (same source as
+  # the firmware build) and baked into the lattice-migrations image by migrations-ci.yml.
+  publish-manifests:
+    needs: [generate-firmware-matrix]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.ref_name }}
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install PlatformIO
+        run: pip install platformio
+
+      - name: Generate capability manifests
+        working-directory: ESP32Code
+        run: node tools/generate-manifests.mjs
+
+      - name: Upload capability manifests
+        uses: actions/upload-artifact@v4
+        with:
+          name: capability-manifests
+          path: ESP32Code/tools/manifest-gen/out/*.json
+          retention-days: 7

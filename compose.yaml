@@ -145,6 +145,34 @@ services:
       - rabbitmq
     restart: always
 
+  # Google Home Smart Home fulfillment + HomeGraph reporting
+  google-home:
+    build:
+      context: .
+      dockerfile: services/google-home/Dockerfile
+    container_name: google-home
+    ports:
+      - '3010:3010'
+    environment:
+      - PORT=3010
+      - RABBITMQ_URL=amqp://${RABBITMQ_USER:-guest}:${RABBITMQ_PASSWORD:-guest}@rabbitmq:5672
+      - DATABASE_URL=postgresql://${BACKEND_DB_USER}:${BACKEND_DB_PASSWORD}@postgres:5432/${DB_NAME:-emqx_data}
+      - JWT_SECRET=${JWT_SECRET}
+      - JWT_GOOGLE_CLOUD_TO_CLOUD_LOGIN_EXPIRES_IN=${JWT_GOOGLE_CLOUD_TO_CLOUD_LOGIN_EXPIRES_IN:-3600}
+      - JWT_GOOGLE_CLOUD_TO_CLOUD_LOGIN_REFRESH=${JWT_GOOGLE_CLOUD_TO_CLOUD_LOGIN_REFRESH:-0}
+      - VALKEY_URL=redis://${REDIS_USER}:${REDIS_PASSWORD}@valkey:6379
+      - GOOGLE_AUTH_CLIENT_ID=${GOOGLE_AUTH_CLIENT_ID}
+      - GOOGLE_AUTH_CLIENT_SECRET=${GOOGLE_AUTH_CLIENT_SECRET}
+      - GOOGLE_SIGN_IN_CLIENT_ID=${GOOGLE_SIGN_IN_CLIENT_ID}
+      - GOOGLE_SIGN_IN_CLIENT_SECRET=${GOOGLE_SIGN_IN_CLIENT_SECRET}
+      - GOOGLE_SERVICE_ACCOUNT_KEY=${GOOGLE_SERVICE_ACCOUNT_KEY}
+    depends_on:
+      postgres:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_started
+    restart: always
+
   # Prisma migrations — run once on first setup or after schema changes:
   #   docker compose run --rm migrate
   migrate:

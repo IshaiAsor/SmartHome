@@ -8,6 +8,7 @@
 #include "esp_camera.h"
 #include "services/CameraService.h"
 #include "services/HttpFrameService.h"
+#include "actions/manifest/CapabilityRegistry.h"
 
 // Defined in SmartHome.cpp
 extern HttpFrameService httpFrameService;
@@ -15,25 +16,10 @@ extern HttpFrameService httpFrameService;
 class LiveStreamHttpAction : public BaseTelemetryAction
 {
 public:
-    static const PinSlotDef* blueprint() {
-        static const PinSlotDef slots[] = { { nullptr } };
-        return slots;
-    }
-
-    static const char* googleActionType() { return "action.devices.types.CAMERA"; }
-
-    static const GoogleTraitDef* supportedTraits() {
-        static const GoogleTraitDef traits[] = {
-            { "action.devices.traits.CameraStream", "CameraStream" },
-            { nullptr }
-        };
-        return traits;
-    }
-
-    static CapabilityDescriptor capability() {
-        return { "camera_http_stream", "Camera (Live Stream HTTP)", "LiveStreamHttpAction", "telemetry",
-                 "camera_http_stream", googleActionType(), supportedTraits(), 33, blueprint() };
-    }
+    static const PinSlotDef* blueprint() { return CapabilityRegistry::cameraHttpStream().pins; }
+    static const char* googleActionType() { return CapabilityRegistry::cameraHttpStream().googleType; }
+    static const GoogleTraitDef* supportedTraits() { return CapabilityRegistry::cameraHttpStream().traits; }
+    static CapabilityDescriptor capability() { return CapabilityRegistry::cameraHttpStream(); }
 
 protected:
     String executeTelemetryAction() override

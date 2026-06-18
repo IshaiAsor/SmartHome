@@ -176,6 +176,28 @@
       "dependsOn": ["kill-ota-manager-ports", "build-ml-router-deps"]
     },
     {
+      "label": "kill-automation-worker-ports",
+      "type": "shell",
+      "command": "npx -y kill-port 9236 3008",
+      "presentation": { "reveal": "silent" },
+      "problemMatcher": []
+    },
+    {
+      "label": "prep-automation-worker",
+      "dependsOn": ["kill-automation-worker-ports", "build-ml-router-deps"]
+    },
+    {
+      "label": "kill-google-home-ports",
+      "type": "shell",
+      "command": "npx -y kill-port 9237 3010",
+      "presentation": { "reveal": "silent" },
+      "problemMatcher": []
+    },
+    {
+      "label": "prep-google-home",
+      "dependsOn": ["kill-google-home-ports", "build-ml-router-deps"]
+    },
+    {
       "type": "PlatformIO",
       "task": "Build",
       "problemMatcher": [

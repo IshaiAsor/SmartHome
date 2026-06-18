@@ -2,33 +2,15 @@
 #include <vector>
 #include <Arduino.h>
 #include "actions/telemtries/BaseTelemtryAction.h"
+#include "actions/manifest/CapabilityRegistry.h"
 
 class CO2LevelAction : public BaseTelemetryAction
 {
 public:
-    static const PinSlotDef* blueprint() {
-        static const PinSlotDef slots[] = {
-            { "rx", "UART RX (MH-Z19B)", INPUT  },
-            { "tx", "UART TX (MH-Z19B)", OUTPUT },
-            { nullptr }
-        };
-        return slots;
-    }
-
-    static const char* googleActionType() { return "action.devices.types.SENSOR"; }
-
-    static const GoogleTraitDef* supportedTraits() {
-        static const GoogleTraitDef traits[] = {
-            { "action.devices.traits.CO2Level", "CO2Level" },
-            { nullptr }
-        };
-        return traits;
-    }
-
-    static CapabilityDescriptor capability() {
-        return { "co2_level", "CO2 Sensor", "CO2LevelAction", "telemetry", "co2_level",
-                 googleActionType(), supportedTraits(), 5000, blueprint() };
-    }
+    static const PinSlotDef* blueprint() { return CapabilityRegistry::co2Level().pins; }
+    static const char* googleActionType() { return CapabilityRegistry::co2Level().googleType; }
+    static const GoogleTraitDef* supportedTraits() { return CapabilityRegistry::co2Level().traits; }
+    static CapabilityDescriptor capability() { return CapabilityRegistry::co2Level(); }
 
 private:
     HardwareSerial _serial;

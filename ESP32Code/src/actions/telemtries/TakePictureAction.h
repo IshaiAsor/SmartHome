@@ -8,6 +8,7 @@
 #include "esp_camera.h"
 #include "services/CameraService.h"
 #include "services/LiveStreamService.h"
+#include "actions/manifest/CapabilityRegistry.h"
 
 // Defined in SmartHome.cpp
 extern LiveStreamService wsCaptureService;
@@ -15,25 +16,10 @@ extern LiveStreamService wsCaptureService;
 class TakePictureAction : public BaseTelemetryAction
 {
 public:
-    static const PinSlotDef* blueprint() {
-        static const PinSlotDef slots[] = { { nullptr } };
-        return slots;
-    }
-
-    static const char* googleActionType() { return "action.devices.types.CAMERA"; }
-
-    static const GoogleTraitDef* supportedTraits() {
-        static const GoogleTraitDef traits[] = {
-            { "action.devices.traits.CameraStream", "CameraStream" },
-            { nullptr }
-        };
-        return traits;
-    }
-
-    static CapabilityDescriptor capability() {
-        return { "camera_ws_capture", "Camera (Snapshot WS)", "TakePictureAction", "telemetry",
-                 "camera_ws_capture", googleActionType(), supportedTraits(), 1000, blueprint() };
-    }
+    static const PinSlotDef* blueprint() { return CapabilityRegistry::cameraWsCapture().pins; }
+    static const char* googleActionType() { return CapabilityRegistry::cameraWsCapture().googleType; }
+    static const GoogleTraitDef* supportedTraits() { return CapabilityRegistry::cameraWsCapture().traits; }
+    static CapabilityDescriptor capability() { return CapabilityRegistry::cameraWsCapture(); }
 
 protected:
     String executeTelemetryAction() override

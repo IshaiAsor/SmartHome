@@ -3,33 +3,15 @@
 #include <string>
 #include <Arduino.h>
 #include "BaseCommandAction.h"
+#include "actions/manifest/CapabilityRegistry.h"
 
 class LightDimmerAction : public BaseCommandAction
 {
 public:
-    static const PinSlotDef* blueprint() {
-        static const PinSlotDef slots[] = {
-            { "pwm", "PWM", OUTPUT },
-            { nullptr }
-        };
-        return slots;
-    }
-
-    static const char* googleActionType() { return "action.devices.types.LIGHT"; }
-
-    static const GoogleTraitDef* supportedTraits() {
-        static const GoogleTraitDef traits[] = {
-            { "action.devices.traits.OnOff",      "OnOff"      },
-            { "action.devices.traits.Brightness",  "Brightness" },
-            { nullptr }
-        };
-        return traits;
-    }
-
-    static CapabilityDescriptor capability() {
-        return { "dimmer", "Light Dimmer", "LightDimmerAction", "command", "dimmer",
-                 googleActionType(), supportedTraits(), 0, blueprint() };
-    }
+    static const PinSlotDef* blueprint() { return CapabilityRegistry::dimmer().pins; }
+    static const char* googleActionType() { return CapabilityRegistry::dimmer().googleType; }
+    static const GoogleTraitDef* supportedTraits() { return CapabilityRegistry::dimmer().traits; }
+    static CapabilityDescriptor capability() { return CapabilityRegistry::dimmer(); }
 
 private:
     int dimmerPinNumber;

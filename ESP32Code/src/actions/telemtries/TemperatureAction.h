@@ -5,33 +5,15 @@
 #include <OneWire.h>
 #include <DallasTemperature.h>
 #include "actions/telemtries/BaseTelemtryAction.h"
+#include "actions/manifest/CapabilityRegistry.h"
 
 class TemperatureAction : public BaseTelemetryAction
 {
 public:
-    static const PinSlotDef* blueprint() {
-        static const PinSlotDef slots[] = {
-            { "data", "1-Wire Data", INPUT },
-            { nullptr }
-        };
-        return slots;
-    }
-
-    static const char* googleActionType() { return "action.devices.types.SENSOR"; }
-
-    static const GoogleTraitDef* supportedTraits() {
-        static const GoogleTraitDef traits[] = {
-            { "action.devices.traits.TemperatureSetting", "TemperatureSetting" },
-            { "action.devices.traits.HumiditySetting",    "HumiditySetting"    },
-            { nullptr }
-        };
-        return traits;
-    }
-
-    static CapabilityDescriptor capability() {
-        return { "temperature", "Temperature Sensor", "TemperatureAction", "telemetry", "sensor1",
-                 googleActionType(), supportedTraits(), 10000, blueprint() };
-    }
+    static const PinSlotDef* blueprint() { return CapabilityRegistry::temperature().pins; }
+    static const char* googleActionType() { return CapabilityRegistry::temperature().googleType; }
+    static const GoogleTraitDef* supportedTraits() { return CapabilityRegistry::temperature().traits; }
+    static CapabilityDescriptor capability() { return CapabilityRegistry::temperature(); }
 
 private:
     int pinNumber;

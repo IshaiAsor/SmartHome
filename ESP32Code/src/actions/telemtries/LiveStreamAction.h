@@ -8,6 +8,7 @@
 #include "esp_camera.h"
 #include "services/CameraService.h"
 #include "services/LiveStreamService.h"
+#include "actions/manifest/CapabilityRegistry.h"
 
 // Defined in SmartHome.cpp
 extern LiveStreamService liveStreamService;
@@ -15,26 +16,10 @@ extern LiveStreamService liveStreamService;
 class LiveStreamAction : public BaseTelemetryAction
 {
 public:
-    // Camera GPIO is owned by board-level macros; no user-configurable pins.
-    static const PinSlotDef* blueprint() {
-        static const PinSlotDef slots[] = { { nullptr } };
-        return slots;
-    }
-
-    static const char* googleActionType() { return "action.devices.types.CAMERA"; }
-
-    static const GoogleTraitDef* supportedTraits() {
-        static const GoogleTraitDef traits[] = {
-            { "action.devices.traits.CameraStream", "CameraStream" },
-            { nullptr }
-        };
-        return traits;
-    }
-
-    static CapabilityDescriptor capability() {
-        return { "camera", "Camera", "LiveStreamAction", "telemetry", "camera",
-                 googleActionType(), supportedTraits(), 333, blueprint() };
-    }
+    static const PinSlotDef* blueprint() { return CapabilityRegistry::camera().pins; }
+    static const char* googleActionType() { return CapabilityRegistry::camera().googleType; }
+    static const GoogleTraitDef* supportedTraits() { return CapabilityRegistry::camera().traits; }
+    static CapabilityDescriptor capability() { return CapabilityRegistry::camera(); }
 
 protected:
     String executeTelemetryAction() override

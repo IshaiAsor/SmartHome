@@ -3,32 +3,15 @@
 #include <string>
 #include <Arduino.h>
 #include "BaseCommandAction.h"
+#include "actions/manifest/CapabilityRegistry.h"
 
 class OutletCommandAction : public BaseCommandAction
 {
 public:
-    static const PinSlotDef* blueprint() {
-        static const PinSlotDef slots[] = {
-            { "relay", "Relay", OUTPUT },
-            { nullptr }
-        };
-        return slots;
-    }
-
-    static const char* googleActionType() { return "action.devices.types.OUTLET"; }
-
-    static const GoogleTraitDef* supportedTraits() {
-        static const GoogleTraitDef traits[] = {
-            { "action.devices.traits.OnOff",     "OnOff"     },
-            { nullptr }
-        };
-        return traits;
-    }
-
-    static CapabilityDescriptor capability() {
-        return { "outlet", "Outlet", "OutletCommandAction", "command", "outlet",
-                 googleActionType(), supportedTraits(), 0, blueprint() };
-    }
+    static const PinSlotDef* blueprint() { return CapabilityRegistry::outlet().pins; }
+    static const char* googleActionType() { return CapabilityRegistry::outlet().googleType; }
+    static const GoogleTraitDef* supportedTraits() { return CapabilityRegistry::outlet().traits; }
+    static CapabilityDescriptor capability() { return CapabilityRegistry::outlet(); }
 
 private:
     int outletPinNumber;

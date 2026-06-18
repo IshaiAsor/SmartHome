@@ -2,32 +2,15 @@
 #include <vector>
 #include <Arduino.h>
 #include "actions/telemtries/BaseTelemtryAction.h"
+#include "actions/manifest/CapabilityRegistry.h"
 
 class PhLevelAction : public BaseTelemetryAction
 {
 public:
-    static const PinSlotDef* blueprint() {
-        static const PinSlotDef slots[] = {
-            { "adc", "ADC Input", INPUT },
-            { nullptr }
-        };
-        return slots;
-    }
-
-    static const char* googleActionType() { return "action.devices.types.SENSOR"; }
-
-    static const GoogleTraitDef* supportedTraits() {
-        static const GoogleTraitDef traits[] = {
-            { "action.devices.traits.PhLevel", "PhLevel" },
-            { nullptr }
-        };
-        return traits;
-    }
-
-    static CapabilityDescriptor capability() {
-        return { "ph_level", "pH Sensor", "PhLevelAction", "telemetry", "ph_level",
-                 googleActionType(), supportedTraits(), 5000, blueprint() };
-    }
+    static const PinSlotDef* blueprint() { return CapabilityRegistry::phLevel().pins; }
+    static const char* googleActionType() { return CapabilityRegistry::phLevel().googleType; }
+    static const GoogleTraitDef* supportedTraits() { return CapabilityRegistry::phLevel().traits; }
+    static CapabilityDescriptor capability() { return CapabilityRegistry::phLevel(); }
 
 private:
     int sensorPin;
