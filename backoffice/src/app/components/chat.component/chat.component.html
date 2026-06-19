@@ -1,0 +1,37 @@
+<div class="chat-wrapper">
+      <div #scrollContainer class="chat-history">
+        @for (msg of chatService.messages(); track $index) {
+          <div [ngClass]="['message-row', msg.role]">
+            <div class="bubble">
+              <span class="sender-label">{{ msg.role === 'user' ? 'You' : 'Qwen AI' }}</span>
+              <p class="content">{{ msg.content || '...' }}</p>
+            </div>
+          </div>
+        }
+
+        @if (chatService.isTyping()) {
+          <div class="message-row assistant typing">
+            <div class="bubble">
+              <div class="typing-indicator">
+                <span></span><span></span><span></span>
+              </div>
+            </div>
+          </div>
+        }
+      </div>
+
+      <div class="input-dock">
+        <textarea
+          [(ngModel)]="userInput"
+          (keydown.enter)="handleEnter($event)"
+          [disabled]="chatService.isTyping()"
+          placeholder="Ask Qwen something..."
+          rows="1">
+        </textarea>
+        <button 
+          (click)="submitMessage()" 
+          [disabled]="!userInput.trim() || chatService.isTyping()">
+          Send
+        </button>
+      </div>
+    </div>

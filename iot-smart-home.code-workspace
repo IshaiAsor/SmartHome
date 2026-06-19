@@ -64,5 +64,6 @@
       "ESP32Code": true,
       "services": true,
     },
+    "powershell.cwd": "Project Root",
   },
 }

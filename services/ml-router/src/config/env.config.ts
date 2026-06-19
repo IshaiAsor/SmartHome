@@ -4,5 +4,12 @@ const ollamaUrl = (process.env['OLLAMA_URL'] ?? 'http://localhost:11434').replac
 const onnxModelsDir = process.env['ONNX_MODELS_DIR'] ?? './models';
 const logLevel = process.env['LOG_LEVEL'] ?? 'info';
 const otelEndpoint = process.env['OTEL_EXPORTER_OTLP_ENDPOINT'];
-
-export const env = { port, rabbitmqUrl, ollamaUrl, onnxModelsDir, logLevel, otelEndpoint };
+const valkeyUrl = process.env['VALKEY_URL'] ?? process.env['REDIS_URL'] ?? 'redis://localhost:6379';
+const valkeyUsername = process.env['VALKEY_USER'] ?? process.env['REDIS_USER'];
+const valkeyPassword = process.env['VALKEY_PASSWORD'] ?? process.env['REDIS_PASSWORD'];
+const valkeyConfig = {
+  url:      process.env['VALKEY_URL'] ?? process.env['REDIS_URL'] ?? 'redis://localhost:6379',
+  username: process.env['VALKEY_USER'] ?? process.env['REDIS_USER'],
+  password: process.env['VALKEY_PASSWORD'] ?? process.env['REDIS_PASSWORD'],
+};
+export const env = { port, rabbitmqUrl, ollamaUrl, onnxModelsDir, logLevel, otelEndpoint, valkeyConfig };

@@ -6,7 +6,7 @@ import { env } from './config/env.config';
 import { healthRouter } from './routes/health.routes';
 import { inferRouter } from './routes/infer.routes';
 import { setupModelQueues } from './queue/setup';
-
+import * as aiProvider from './handlers/redis.chat.hanlder';
 // OTel must be initialised before any other imports that could create spans.
 const { metricsHandler } = initOTel('ml-router');
 
@@ -28,6 +28,8 @@ async function main() {
   app.listen(env.port, () => {
     log.info({ port: env.port }, 'ml-router listening');
   });
+
+  await aiProvider.initWorker(); // Start the Valkey worker for chat jobs
 }
 
 main().catch((err) => {

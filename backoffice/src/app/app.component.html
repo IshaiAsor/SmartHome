@@ -18,12 +18,16 @@
       <span>Devices</span>
     </a>
     <a class="nav-link" routerLink="/rules" routerLinkActive="active">
-      <mat-icon>auto_awesome</mat-icon>
+      <mat-icon>play_for_work</mat-icon>
       <span>Rules</span>
     </a>
     <a class="nav-link" routerLink="/device-config" routerLinkActive="active">
       <mat-icon>settings_suggest</mat-icon>
       <span>Device Config</span>
+    </a>
+    <a class="nav-link"  (click)="openAIEditor()" routerLinkActive="active">
+      <mat-icon>auto_awesome</mat-icon>
+      <span>Ask qwen</span>
     </a>
     @if (user.role === 'admin') {
       <a class="nav-link" routerLink="/admin/templates" routerLinkActive="active">

@@ -8,23 +8,24 @@ import { AuthService } from './auth.service';
   providedIn: 'root'
 })
 export class DeviceSocketService {
-  publishActionState(id: number, actionState: string) {
-    console.log(`Publishing action state update for action ${id} with state ${actionState}`);
-    this.socket.emit('action_state_update', { actionId: id, state: actionState });
-  }
   private authService = inject(AuthService);
   private socket: Socket;
-
+  
   constructor() {
     const socketUrl = environment.socketUrl ||
-      (environment.production ? `${window.location.protocol}//socket.${window.location.hostname}` : '');
+    (environment.production ? `${window.location.protocol}//socket.${window.location.hostname}` : '');
     this.socket = io(socketUrl, {
       auth: {
         token: this.authService.getToken()
       }
     });
   }
-
+  
+  publishActionState(id: number, actionState: string) {
+    console.log(`Publishing action state update for action ${id} with state ${actionState}`);
+    this.socket.emit('action_state_update', { actionId: id, state: actionState });
+  }
+  
   onDeviceOnlineStatusChange(): Observable<{ deviceId: number, online: boolean }> {
     return new Observable((observer) => {
       this.socket.on('device_status_change', (data) => {

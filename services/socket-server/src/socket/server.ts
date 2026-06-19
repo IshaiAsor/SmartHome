@@ -8,7 +8,9 @@ import { publish, RK } from '@lattice/queue';
 import type { ActionRequestedPayload } from '@lattice/queue';
 import { createLogger } from '@lattice/logger';
 import { env } from '../config/env.config';
+import { initOTel } from '@lattice/otel';
 
+const { metricsHandler } = initOTel('socket-server');
 const log = createLogger('socket-server');
 
 // The app_usage token's user identity. The monolith (current auth owner until F2.2)
@@ -36,8 +38,8 @@ interface ClientActionStateUpdate {
  */
 export function initSocket(httpServer: http.Server, ch: Channel): Server {
   const pubClient = new IORedis(env.valkey.url, {
-    username:    env.valkey.username,
-    password:    env.valkey.password,
+    username: env.valkey.username,
+    password: env.valkey.password,
     lazyConnect: true,
   });
   const subClient = pubClient.duplicate();
@@ -65,6 +67,39 @@ export function initSocket(httpServer: http.Server, ch: Channel): Server {
     socket.join(`user_${userId}`);
     log.info({ userId }, 'socket connected');
 
+    socket.on('chat:request', async (payload: { chatMode: string; messages: any[] }) => {
+      const requestId = `req_${socket.id}_${Date.now()}`;
+      const responseChannel = `chat:response:${requestId}`;
+
+      // A. Subscribe to the specific response channel for this request
+      await subClient.subscribe(responseChannel);
+
+      const messageHandler = (channel: string, message: string) => {
+        if (channel !== responseChannel) return;
+
+        if (message === '[DONE]') {
+          socket.emit('chat:done');
+          subClient.unsubscribe(responseChannel);
+          subClient.off('message', messageHandler);
+        } else {
+          // Stream the token directly to the Angular client
+          socket.emit('chat:token', message);
+        }
+      };
+
+      // Listen to messages from the worker
+      subClient.on('message', messageHandler);
+      
+      // B. Push the payload into the AI processing queue
+      const jobPayload = JSON.stringify({
+        requestId,
+        userId: userId,
+        messages: payload.messages,
+      });
+
+      await pubClient.publish('chat:jobs', jobPayload);
+    });
+
     socket.on('disconnect', () => log.info({ userId }, 'socket disconnected'));
 
     // Publish the request only. digest-service resolves the action, writes current_state
@@ -74,7 +109,7 @@ export function initSocket(httpServer: http.Server, ch: Channel): Server {
       const payload: ActionRequestedPayload = {
         userId,
         actionId: data.actionId,
-        value:    data.state,
+        value: data.state,
         duration: data.duration,
       };
       try {
