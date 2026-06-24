@@ -23,6 +23,12 @@ export class MgmtDeviceListComponent implements OnInit {
   destroyRef = inject(DestroyRef);
 
   devices: DeviceView[] | undefined;
+
+  get devicesTotal()     { return this.devices?.length ?? 0; }
+  get devicesOnline()    { return this.devices?.filter(d => d.online).length ?? 0; }
+  get devicesOffline()   { return this.devices?.filter(d => !d.online).length ?? 0; }
+  get updatesAvailable() { return this.devices?.filter(d => d.update_available).length ?? 0; }
+
   ngOnInit(): void {
     this.loadDevices();
 
