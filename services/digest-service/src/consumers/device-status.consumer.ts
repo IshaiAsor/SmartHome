@@ -13,7 +13,7 @@ const ONLINE_TTL_SECONDS = 90;
 
 export function deviceStatusConsumer() {
   return async (payload: DeviceStateChangedPayload): Promise<void> => {
-    const { userId, deviceId, state, timestamp } = payload;
+    const { userId, deviceId, state, timestamp, version } = payload;
     const online = state === true;
     const userDeviceId = parseInt(deviceId, 10);
 
@@ -23,6 +23,41 @@ export function deviceStatusConsumer() {
       where: { id: userDeviceId },
       data: { online, last_online_date: new Date(timestamp) },
     });
+
+    // 2. OTA confirmation: device reconnected on the expected new-version topic path.
+    if (online && version) {
+      const userDevice = await db.userDevice.findUnique({
+        where: { id: userDeviceId },
+        select: { pending_firmware_version: true, pending_device_type_id: true },
+      });
+      if (
+        userDevice != null &&
+        userDevice.pending_firmware_version === version &&
+        userDevice.pending_device_type_id != null
+      ) {
+        const pendingDeviceTypeId = userDevice.pending_device_type_id;
+        await db.$transaction([
+          db.userDeviceAction.updateMany({
+            where: { user_device_id: userDeviceId, status: 'staged_active' },
+            data: { status: 'active' },
+          }),
+          db.userDeviceAction.updateMany({
+            where: { user_device_id: userDeviceId, status: 'staged_deprecated' },
+            data: { status: 'deprecated' },
+          }),
+          db.userDevice.update({
+            where: { id: userDeviceId },
+            data: {
+              current_firmware_version: version,
+              device_type_id: pendingDeviceTypeId,
+              pending_firmware_version: null,
+              pending_device_type_id: null,
+            },
+          }),
+        ]);
+        log.info({ userDeviceId, version }, 'OTA confirmed — actions activated, firmware version updated');
+      }
+    }
 
     // 2. Hot cache (best-effort).
     try {

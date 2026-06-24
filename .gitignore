@@ -65,3 +65,6 @@ certs/server.key
 certs/server.pem
 sql/*.testseed.sql
 google-homegraph-key.json
+
+# Design previews (uploaded to claude.ai/design, not source)
+backoffice/_design-previews/

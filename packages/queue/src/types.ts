@@ -37,6 +37,7 @@ export interface DeviceStateChangedPayload {
   actionName: string;
   state: unknown;
   timestamp: string;
+  version?: string;
 }
 
 // A UI client's request to change an action's state, addressed by UserDeviceAction id

@@ -50,7 +50,7 @@ public:
         {
             // Authenticate the firmware download with the device's current JWT.
             JwtToken *jwt = jwtService.GetCurrentJwtToken();
-            otaService->handleUpdateMessage(message.c_str(), jwt ? jwt->token.c_str() : "");
+            otaService->handleUpdateMessage(message.c_str(), jwt ? jwt->token.c_str() : "", ackPublisher);
             return;
         }
 

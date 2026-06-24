@@ -6,19 +6,21 @@
 #include <HTTPUpdate.h>
 #include <WiFiClientSecure.h>
 #include <ArduinoJson.h>
+#include <actions/AckPublisher.h>
 
 class OtaService {
 public:
     OtaService(const char* currentVersion, const char* deviceType, const char* rootCa)
         : _currentVersion(currentVersion), _deviceType(deviceType), _rootCa(rootCa) {}
 
-    void handleUpdateMessage(const char* payload, const char* authToken = "") {
+    void handleUpdateMessage(const char* payload, const char* authToken = "", AckPublisherFn onStatus = nullptr) {
         JsonDocument doc;
         DeserializationError error = deserializeJson(doc, payload);
 
         if (error) {
             Serial.print("OTA: Failed to parse update payload: ");
             Serial.println(error.c_str());
+            if (onStatus) onStatus("ota", "", false, "invalid-payload");
             return;
         }
 
@@ -27,16 +29,19 @@ public:
 
         if (!newVersion || !downloadUrl) {
             Serial.println("OTA: Invalid payload format");
+            if (onStatus) onStatus("ota", "", false, "invalid-payload");
             return;
         }
 
         if (!isNewerVersion(newVersion, _currentVersion)) {
             Serial.printf("OTA: Skipping — current=%s, received=%s\n", _currentVersion, newVersion);
+            if (onStatus) onStatus("ota", "", false, "rejected:not-newer");
             return;
         }
 
         if (!authToken || !*authToken) {
             Serial.println("OTA: No device token available — refusing to download unauthenticated.");
+            if (onStatus) onStatus("ota", "", false, "rejected:no-token");
             return;
         }
 
@@ -44,7 +49,9 @@ public:
         Serial.print("OTA: Downloading from: ");
         Serial.println(downloadUrl);
 
-        performUpdate(downloadUrl, authToken);
+        if (onStatus) onStatus("ota", "", true, (String("starting:") + newVersion).c_str());
+
+        performUpdate(downloadUrl, authToken, onStatus);
     }
 
 private:
@@ -67,7 +74,7 @@ private:
         return nPat > cPat;
     }
 
-    void performUpdate(const char* url, const char* authToken = "") {
+    void performUpdate(const char* url, const char* authToken, AckPublisherFn onStatus) {
         WiFiClientSecure client;
         client.setCACert(_rootCa);
 
@@ -87,17 +94,20 @@ private:
         });
 
         switch (ret) {
-            case HTTP_UPDATE_FAILED:
-                Serial.printf("OTA: Update failed! Error (%d): %s\n", 
-                              httpUpdate.getLastError(), 
+            case HTTP_UPDATE_FAILED: {
+                String detail = String("failed:") + httpUpdate.getLastError() + ":" + httpUpdate.getLastErrorString();
+                Serial.printf("OTA: Update failed! Error (%d): %s\n",
+                              httpUpdate.getLastError(),
                               httpUpdate.getLastErrorString().c_str());
+                if (onStatus) onStatus("ota", "", false, detail.c_str());
                 break;
-
+            }
             case HTTP_UPDATE_NO_UPDATES:
                 Serial.println("OTA: No updates available.");
                 break;
 
             case HTTP_UPDATE_OK:
+                // Device reboots here — no publish possible.
                 Serial.println("OTA: Update successful! Rebooting...");
                 break;
         }

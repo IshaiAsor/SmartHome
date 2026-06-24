@@ -7,6 +7,7 @@ import { socket } from '../socket/emitter';
 import { takePending } from '../cache/pending';
 import type { PendingCommand } from '../cache/pending';
 import * as timeout from '../pending-timeout';
+import { db } from '../db/client';
 
 const log = createLogger('digest-service:action-result');
 
@@ -30,6 +31,26 @@ export function actionResultConsumer(ch: Channel) {
     }
 
     if (status === 'error') {
+      // OTA failure — rollback staged actions and restore old ones.
+      if (actionName === 'ota') {
+        const userDeviceId = parseInt(deviceId, 10);
+        await db.$transaction([
+          db.userDeviceAction.deleteMany({
+            where: { user_device_id: userDeviceId, status: 'staged_active' },
+          }),
+          db.userDeviceAction.updateMany({
+            where: { user_device_id: userDeviceId, status: 'staged_deprecated' },
+            data: { status: 'active' },
+          }),
+          db.userDevice.update({
+            where: { id: userDeviceId },
+            data: { pending_firmware_version: null, pending_device_type_id: null },
+          }),
+        ]);
+        log.warn({ userDeviceId, value }, 'OTA failed — staged actions removed, old actions restored');
+        return;
+      }
+
       // Rejected by the device — no DB write. Revert the UI if we owned the pending request.
       if (pending !== null && commandId) {
         log.warn({ userId, deviceId, actionName, commandId }, 'device rejected command → failed');

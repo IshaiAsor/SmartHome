@@ -17,6 +17,7 @@ export function deviceStatusHandler(ch: Channel): MqttHandler {
         actionName: 'status',
         state,
         timestamp:  new Date().toISOString(),
+        version:    parsed.version,
       };
       publish(ch, RK.DEVICE_STATE_CHANGED, msg);
       log.debug({ topic: parsed, msg }, 'device status received and forwarded');

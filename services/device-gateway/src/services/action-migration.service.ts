@@ -74,7 +74,7 @@ class ActionMigrationService {
         where: { device_id: latestDevice.id },
       }),
       db.userDeviceAction.findMany({
-        where: { user_device_id: userDeviceId, status: 'active' },
+        where: { user_device_id: userDeviceId, status: { in: ['active', 'staged_deprecated'] } },
         include: { action: true },
       }),
     ]);
@@ -105,7 +105,7 @@ class ActionMigrationService {
   }
 
   async applyUpdate(userDeviceId: number): Promise<void> {
-    const { userDevice, currentDevice, latestDevice } = await resolveVersions(userDeviceId);
+    const { currentDevice, latestDevice } = await resolveVersions(userDeviceId);
 
     if (currentDevice.id === latestDevice.id) return;
 
@@ -120,16 +120,26 @@ class ActionMigrationService {
     const blueprintByMqttName = new Map(blueprints.map((b) => [b.mqtt_action_name, b]));
 
     await db.$transaction(async (tx) => {
+      // Clear any previous in-flight OTA staging before applying a new one.
+      await tx.userDeviceAction.deleteMany({
+        where: { user_device_id: userDeviceId, status: 'staged_active' },
+      });
+      await tx.userDeviceAction.updateMany({
+        where: { user_device_id: userDeviceId, status: 'staged_deprecated' },
+        data: { status: 'active' },
+      });
+
       for (const ua of activeActions) {
         const bp = blueprintByMqttName.get(ua.action.mqtt_action_name ?? '');
         if (!bp) {
-          await tx.userDeviceAction.update({ where: { id: ua.id }, data: { status: 'deprecated' } });
+          // Incompatible — stage for deprecation; leave active until OTA confirms.
+          await tx.userDeviceAction.update({ where: { id: ua.id }, data: { status: 'staged_deprecated' } });
           continue;
         }
         const existingPins = ((ua.action.pins ?? []) as unknown as PinSlot[]);
         const { compatible } = isCompatible(ua.action.implementation_type, existingPins, bp);
         if (!compatible) {
-          await tx.userDeviceAction.update({ where: { id: ua.id }, data: { status: 'deprecated' } });
+          await tx.userDeviceAction.update({ where: { id: ua.id }, data: { status: 'staged_deprecated' } });
           continue;
         }
 
@@ -151,17 +161,29 @@ class ActionMigrationService {
           },
         });
 
-        await tx.userDeviceAction.update({
-          where: { id: ua.id },
-          data: { action_id: newAction.id },
+        // Create new action as staged_active — not yet live until device confirms OTA.
+        await tx.userDeviceAction.create({
+          data: {
+            user_device_id: userDeviceId,
+            action_id: newAction.id,
+            action_name: ua.action_name,
+            mqtt_action_name: ua.mqtt_action_name,
+            pins: ua.pins ?? undefined,
+            current_state: ua.current_state ?? undefined,
+            status: 'staged_active',
+            sort_order: ua.sort_order,
+            group_name: ua.group_name ?? undefined,
+            telemetry_interval_ms: ua.telemetry_interval_ms ?? undefined,
+          },
         });
       }
 
+      // Record pending firmware version — do NOT update current fields yet.
       await tx.userDevice.update({
         where: { id: userDeviceId },
         data: {
-          device_type_id: latestDevice.id,
-          current_firmware_version: latestDevice.version,
+          pending_device_type_id: latestDevice.id,
+          pending_firmware_version: latestDevice.version,
         },
       });
     });
