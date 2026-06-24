@@ -127,10 +127,10 @@
       <div class="tab-icon-wrap"><mat-icon>bolt</mat-icon></div>
       <span>Rules</span>
     </a>
-    <a class="tab-item" (click)="themeService.toggle()">
+    <button type="button" class="tab-item" (click)="themeService.toggle()">
       <div class="tab-icon-wrap"><mat-icon>{{ themeService.theme() === 'dark' ? 'light_mode' : 'dark_mode' }}</mat-icon></div>
       <span>Theme</span>
-    </a>
+    </button>
   </nav>
 }
 

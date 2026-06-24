@@ -53,10 +53,11 @@
         }
 
         <div class="field">
-          <label>Username</label>
+          <label for="reg-username">Username</label>
           <div class="input-wrap">
             <mat-icon class="input-icon">person</mat-icon>
             <input
+              id="reg-username"
               type="text"
               [(ngModel)]="username"
               name="username"
@@ -67,10 +68,11 @@
         </div>
 
         <div class="field">
-          <label>Email</label>
+          <label for="reg-email">Email</label>
           <div class="input-wrap">
             <mat-icon class="input-icon">email</mat-icon>
             <input
+              id="reg-email"
               type="email"
               [(ngModel)]="email"
               name="email"
@@ -81,10 +83,11 @@
         </div>
 
         <div class="field">
-          <label>Password</label>
+          <label for="reg-password">Password</label>
           <div class="input-wrap">
             <mat-icon class="input-icon">lock</mat-icon>
             <input
+              id="reg-password"
               type="password"
               [(ngModel)]="password"
               name="password"
@@ -95,10 +98,11 @@
         </div>
 
         <div class="field">
-          <label>Confirm password</label>
+          <label for="reg-confirm">Confirm password</label>
           <div class="input-wrap">
             <mat-icon class="input-icon">lock_reset</mat-icon>
             <input
+              id="reg-confirm"
               type="password"
               [(ngModel)]="confirmPassword"
               name="confirmPassword"

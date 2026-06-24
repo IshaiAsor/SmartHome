@@ -53,10 +53,11 @@
         }
 
         <div class="field">
-          <label>Email</label>
+          <label for="login-email">Email</label>
           <div class="input-wrap">
             <mat-icon class="input-icon">email</mat-icon>
             <input
+              id="login-email"
               type="email"
               [(ngModel)]="username"
               name="username"
@@ -67,10 +68,11 @@
         </div>
 
         <div class="field">
-          <label>Password</label>
+          <label for="login-password">Password</label>
           <div class="input-wrap">
             <mat-icon class="input-icon">lock</mat-icon>
             <input
+              id="login-password"
               type="password"
               [(ngModel)]="password"
               name="password"
