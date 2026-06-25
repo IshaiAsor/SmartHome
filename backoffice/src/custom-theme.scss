@@ -1,10 +1,26 @@
 
 @use '@angular/material' as mat;
+
+/* Light theme — azure primary (closest to --primary: #4f46e5 indigo) */
 @include mat.theme((
   color: (
-    primary: mat.$violet-palette,
+    primary: mat.$azure-palette,
     tertiary: mat.$cyan-palette,
+    theme-type: light,
   ),
   typography: Roboto,
   density: 0
 ));
+
+/* Dark theme — cyan primary matches --primary: #38bdf8 sky blue */
+.dark-theme {
+  @include mat.theme((
+    color: (
+      primary: mat.$cyan-palette,
+      tertiary: mat.$azure-palette,
+      theme-type: dark,
+    ),
+    typography: Roboto,
+    density: 0
+  ));
+}

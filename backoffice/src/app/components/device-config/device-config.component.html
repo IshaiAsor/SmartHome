@@ -1,9 +1,25 @@
-<div class="page-layout">
+<div class="dc-layout">
 
-  <!-- Left panel: devices -->
-  <div class="panel left-panel">
-    <div class="panel-header">
-      <h2>My Devices</h2>
+  <!-- Mobile device chip selector (hidden on desktop/tablet) -->
+  <div class="mobile-chip-bar">
+    <div class="mobile-chip-scroll">
+      @for (device of devices; track device.id) {
+        <button type="button" class="device-chip" [class.active]="selectedDevice?.id === device.id"
+          (click)="selectDevice(device)">
+          <span class="d-dot" [class.online]="device.online" [class.offline]="!device.online"></span>
+          {{ device.deviceName }}
+        </button>
+      }
+      @if (!loadingDevices && devices.length === 0) {
+        <span class="chip-empty">No devices</span>
+      }
+    </div>
+  </div>
+
+  <!-- Left rail: device list (desktop/tablet) -->
+  <aside class="device-rail">
+    <div class="rail-header">
+      <span class="rail-title">My Devices</span>
       @if (isAdmin) {
         <button mat-icon-button matTooltip="Manage Templates" (click)="goToTemplates()">
           <mat-icon>build</mat-icon>
@@ -15,38 +31,45 @@
       <mat-progress-bar mode="indeterminate"></mat-progress-bar>
     }
 
-    <mat-nav-list>
+    <div class="rail-list">
       @for (device of devices; track device.id) {
-        <mat-list-item
-          [class.selected]="selectedDevice?.id === device.id"
+        <button type="button" class="rail-item" [class.active]="selectedDevice?.id === device.id"
           (click)="selectDevice(device)">
-          <div class="device-item">
-            <div class="device-info">
-              <span class="device-name">{{ device.deviceName }}</span>
-              <span class="device-meta">{{ device.type }} · {{ device.version }}</span>
-            </div>
-            <span class="status-dot" [class.online]="device.online" [class.offline]="!device.online"
-              [matTooltip]="device.online ? 'Online' : 'Offline'"></span>
+          <div class="rail-item-info">
+            <span class="rail-item-name">{{ device.deviceName }}</span>
+            <span class="rail-item-meta">{{ device.type }} · v{{ device.version }}</span>
           </div>
-        </mat-list-item>
+          <span class="status-dot" [class.online]="device.online" [class.offline]="!device.online"
+            [matTooltip]="device.online ? 'Online' : 'Offline'"></span>
+        </button>
       }
       @if (!loadingDevices && devices.length === 0) {
         <p class="empty-hint">No devices found.</p>
       }
-    </mat-nav-list>
-  </div>
+    </div>
+  </aside>
 
-  <!-- Right panel: blueprint config -->
-  <div class="panel right-panel">
+  <!-- Right panel: config area -->
+  <main class="config-panel">
     @if (!selectedDevice) {
       <div class="no-selection">
         <mat-icon>touch_app</mat-icon>
         <p>Select a device to configure its actions</p>
       </div>
     } @else {
-      <div class="config-header">
-        <h2>{{ selectedDevice.deviceName }}</h2>
-        <span class="device-meta">{{ selectedDevice.type }} · v{{ selectedDevice.version }}</span>
+
+      <!-- Device header -->
+      <div class="config-header lattice-card">
+        <div class="config-header-icon">
+          <mat-icon>developer_board</mat-icon>
+        </div>
+        <div class="config-header-info">
+          <h2 class="config-device-name">{{ selectedDevice.deviceName }}</h2>
+          <div class="config-device-meta">
+            <span class="status-dot" [class.online]="selectedDevice.online" [class.offline]="!selectedDevice.online"></span>
+            <span>{{ selectedDevice.type }} · v{{ selectedDevice.version }}</span>
+          </div>
+        </div>
       </div>
 
       @if (loadingBlueprints) {
@@ -63,47 +86,43 @@
 
       @if (blueprints.length > 0) {
 
-        <!-- Active actions: one card per instance -->
+        <!-- Active Actions -->
         <p class="section-label">Active Actions</p>
         @if (activeInstances.length === 0) {
           <p class="empty-hint">No actions activated yet.</p>
         }
         <div class="bp-grid">
           @for (item of activeInstances; track item.instance.id) {
-            <mat-card class="bp-card active-card"
+            <div class="bp-card active-card lattice-card"
               [class.editing]="editingInstanceId === item.instance.id"
               [class.deprecated-card]="item.instance.status === 'deprecated'">
-              <mat-card-header>
-                <mat-card-title>
+
+              <div class="card-header">
+                <div class="card-title">
                   {{ item.instance.name }}
                   @if (item.instance.status === 'deprecated') {
-                    <span class="deprecated-badge" matTooltip="This action is incompatible with the current firmware version">deprecated</span>
+                    <span class="deprecated-badge" matTooltip="Incompatible with current firmware version">deprecated</span>
                   }
-                </mat-card-title>
-                <mat-card-subtitle>
-                  <span class="chip" [class.telemetry]="item.bp.mqtt_action_type === 'telemetry'">{{ typeChip(item.bp) }}</span>
-                  <span class="impl-type">{{ item.bp.implementation_type }}</span>
-                  <span class="mqtt-name">{{ item.instance.mqttName }}</span>
-                </mat-card-subtitle>
-              </mat-card-header>
+                </div>
+                <div class="chip-row">
+                  <span class="type-chip" [class.sensor]="item.bp.mqtt_action_type === 'telemetry'" [class.command]="item.bp.mqtt_action_type !== 'telemetry'">{{ typeChip(item.bp) }}</span>
+                </div>
+              </div>
 
               @if (editingInstanceId === item.instance.id) {
-                <mat-card-content>
-                  <!-- Name -->
-                  <p class="input-section-label">Action Name</p>
+                <div class="card-body">
+                  <p class="field-section-label">Action Name</p>
                   <mat-form-field appearance="outline" class="pin-field">
                     <mat-label>Name</mat-label>
                     <input matInput [(ngModel)]="editName" />
                   </mat-form-field>
 
-                  <!-- Pin inputs -->
                   @if (pinSlots(item.bp).length > 0) {
-                    <p class="input-section-label">Pin Assignment</p>
+                    <p class="field-section-label">Pin Assignment</p>
                     @for (slot of pinSlots(item.bp); track slot.key) {
                       <mat-form-field appearance="outline" class="pin-field">
                         <mat-label>{{ slot.label }}</mat-label>
-                        <input matInput type="number" min="1"
-                          [(ngModel)]="editPinValues[slot.key]" />
+                        <input matInput type="number" min="1" [(ngModel)]="editPinValues[slot.key]" />
                         <mat-hint>{{ slot.description }}</mat-hint>
                         <mat-icon matSuffix class="mode-icon" [matTooltip]="slot.mode">
                           {{ slot.mode === 'OUTPUT' ? 'output' : 'input' }}
@@ -112,9 +131,8 @@
                     }
                   }
 
-                  <!-- Interval -->
                   @if (item.bp.mqtt_action_type === 'telemetry') {
-                    <p class="input-section-label">Polling Interval</p>
+                    <p class="field-section-label">Polling Interval</p>
                     <mat-form-field appearance="outline" class="pin-field">
                       <mat-label>Interval (ms)</mat-label>
                       <input matInput type="number" [(ngModel)]="editIntervalMs"
@@ -122,27 +140,27 @@
                       <mat-hint>Min: {{ item.bp.min_telemetry_interval_ms ?? 0 }} ms</mat-hint>
                     </mat-form-field>
                   }
-                </mat-card-content>
+                </div>
               } @else {
                 @if (item.bp.min_telemetry_interval_ms || item.instance.intervalMs) {
-                  <mat-card-content>
+                  <div class="card-body">
                     @if (item.instance.intervalMs) {
                       <div class="meta-row">
-                        <span class="label">Interval</span>
+                        <span class="meta-label">Interval</span>
                         <span>{{ item.instance.intervalMs }} ms</span>
                       </div>
                     }
                     @if (item.bp.min_telemetry_interval_ms) {
                       <div class="meta-row">
-                        <span class="label">Min interval</span>
+                        <span class="meta-label">Min interval</span>
                         <span>{{ item.bp.min_telemetry_interval_ms }} ms</span>
                       </div>
                     }
-                  </mat-card-content>
+                  </div>
                 }
               }
 
-              <mat-card-actions align="end">
+              <div class="card-actions">
                 @if (editingInstanceId === item.instance.id) {
                   <button mat-button (click)="cancelEdit()">Cancel</button>
                   <button mat-flat-button color="primary"
@@ -154,54 +172,50 @@
                     (click)="startEdit(item.bp, item.instance)">
                     <mat-icon>edit</mat-icon>
                   </button>
-                  <button mat-button color="warn" (click)="removeAction(item.bp, item.instance)">
+                  <button mat-button class="remove-btn" (click)="removeAction(item.bp, item.instance)">
                     <mat-icon>remove_circle_outline</mat-icon> Remove
                   </button>
                 }
-              </mat-card-actions>
-            </mat-card>
+              </div>
+            </div>
           }
         </div>
 
-        <!-- Available capabilities: always show all blueprints so user can add more instances -->
+        <!-- Available Capabilities -->
         <p class="section-label">Available Capabilities</p>
         <div class="bp-grid">
           @for (bp of blueprints; track bp.id) {
-            <mat-card class="bp-card" [class.expanded]="expandedBlueprintId === bp.id">
-              <mat-card-header>
-                <mat-card-title>{{ bp.label }}</mat-card-title>
-                <mat-card-subtitle>
-                  <span class="chip" [class.telemetry]="bp.mqtt_action_type === 'telemetry'">{{ typeChip(bp) }}</span>
-                  <span class="impl-type">{{ bp.implementation_type }}</span>
+            <div class="bp-card lattice-card" [class.expanded]="expandedBlueprintId === bp.id"
+              [class.dimmed]="expandedBlueprintId !== null && expandedBlueprintId !== bp.id">
+
+              <div class="card-header">
+                <div class="card-title">{{ bp.label }}</div>
+                <div class="chip-row">
+                  <span class="type-chip" [class.sensor]="bp.mqtt_action_type === 'telemetry'" [class.command]="bp.mqtt_action_type !== 'telemetry'">{{ typeChip(bp) }}</span>
                   @if (bp.instances.length > 0) {
                     <span class="instance-count">{{ bp.instances.length }} active</span>
                   }
-                </mat-card-subtitle>
-              </mat-card-header>
+                </div>
+              </div>
 
               @if (expandedBlueprintId === bp.id) {
-                <mat-card-content>
-
-                  <!-- Pin inputs -->
+                <div class="card-body">
                   @if (pinSlots(bp).length > 0) {
-                    <p class="input-section-label">Pin Assignment</p>
+                    <p class="field-section-label">Pin Assignment</p>
                     @for (slot of pinSlots(bp); track slot.key) {
                       <mat-form-field appearance="outline" class="pin-field">
                         <mat-label>{{ slot.label }}</mat-label>
-                        <input matInput type="number" min="1"
-                          [(ngModel)]="pinInputValues[slot.key]" />
+                        <input matInput type="number" min="1" [(ngModel)]="pinInputValues[slot.key]" />
                         <mat-hint>{{ slot.description }}</mat-hint>
-                        <mat-icon matSuffix class="mode-icon"
-                          [matTooltip]="slot.mode">
+                        <mat-icon matSuffix class="mode-icon" [matTooltip]="slot.mode">
                           {{ slot.mode === 'OUTPUT' ? 'output' : 'input' }}
                         </mat-icon>
                       </mat-form-field>
                     }
                   }
 
-                  <!-- Interval input for telemetry -->
                   @if (bp.mqtt_action_type === 'telemetry') {
-                    <p class="input-section-label">Polling Interval</p>
+                    <p class="field-section-label">Polling Interval</p>
                     <mat-form-field appearance="outline" class="pin-field">
                       <mat-label>Interval (ms)</mat-label>
                       <input matInput type="number" [(ngModel)]="intervalInputValue"
@@ -209,20 +223,19 @@
                       <mat-hint>Min: {{ bp.min_telemetry_interval_ms ?? 0 }} ms</mat-hint>
                     </mat-form-field>
                   }
-
-                </mat-card-content>
+                </div>
               } @else {
                 @if (bp.min_telemetry_interval_ms) {
-                  <mat-card-content>
+                  <div class="card-body">
                     <div class="meta-row">
-                      <span class="label">Min interval</span>
+                      <span class="meta-label">Min interval</span>
                       <span>{{ bp.min_telemetry_interval_ms }} ms</span>
                     </div>
-                  </mat-card-content>
+                  </div>
                 }
               }
 
-              <mat-card-actions align="end">
+              <div class="card-actions">
                 @if (expandedBlueprintId !== bp.id) {
                   <button mat-flat-button color="primary" (click)="startAdd(bp)">
                     <mat-icon>add</mat-icon>
@@ -234,12 +247,12 @@
                     [disabled]="!canConfirm(bp)"
                     (click)="confirmAdd(bp)">Confirm</button>
                 }
-              </mat-card-actions>
-            </mat-card>
+              </div>
+            </div>
           }
         </div>
       }
     }
-  </div>
+  </main>
 
 </div>

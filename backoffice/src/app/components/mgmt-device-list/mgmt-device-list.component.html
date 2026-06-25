@@ -62,20 +62,20 @@
           <span>Rename</span>
         </button>
         @if (device.update_available) {
-          <button mat-menu-item (click)="updateFirmware(device)" class="menu-update">
+          <button mat-menu-item (click)="updateFirmware(device)" class="menu-update" [disabled]="!device.online">
             <mat-icon>system_update</mat-icon>
             <span>Update Device</span>
           </button>
         }
-        <button mat-menu-item (click)="restartDevice(device)">
+        <button mat-menu-item (click)="restartDevice(device)" [disabled]="!device.online">
           <mat-icon>power_settings_new</mat-icon>
           <span>Restart</span>
         </button>
-        <button mat-menu-item (click)="softResetDevice(device)">
+        <button mat-menu-item (click)="softResetDevice(device)" [disabled]="!device.online">
           <mat-icon>restart_alt</mat-icon>
           <span>Soft Reset</span>
         </button>
-        <button mat-menu-item (click)="hardResetDevice(device)" class="menu-delete">
+        <button mat-menu-item (click)="hardResetDevice(device)" class="menu-delete" [disabled]="!device.online">
           <mat-icon>device_reset</mat-icon>
           <span>Hard Reset</span>
         </button>
