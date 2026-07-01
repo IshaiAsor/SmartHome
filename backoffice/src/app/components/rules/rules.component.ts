@@ -92,16 +92,15 @@ export class RulesComponent implements OnInit {
 
   conditionSummary(rule: UserRuleView): string {
     return rule.conditions.map((c) => {
-      const p = c.parameters as { time?: string; user_device_id?: number; value?: string; status?: string; user_device_action_id?: number; operator?: string };
-      if (c.condition_type === 'schedule') return `At ${p.time}`;
+      if (c.condition_type === 'schedule') return `At ${c.schedule_time}`;
       if (c.condition_type === 'device_state' || c.condition_type === 'device_status') {
-        const device = this.userDevices.find((d) => d.id === p.user_device_id);
-        const name = device?.deviceName ?? `Device #${p.user_device_id}`;
-        return `${name} is ${p.value ?? p.status}`;
+        const device = this.userDevices.find((d) => d.id === c.user_device_id);
+        const name = device?.deviceName ?? `Device #${c.user_device_id}`;
+        return `${name} is ${c.status_value}`;
       }
-      const action = this.userActions.find((a) => a.id === p.user_device_action_id);
-      const name = action ? `${action.deviceName} · ${action.name}` : `Action #${p.user_device_action_id}`;
-      return `${name} ${p.operator} ${p.value}`;
+      const action = this.userActions.find((a) => a.id === c.user_device_action_id);
+      const name = action ? `${action.deviceName} · ${action.name}` : `Action #${c.user_device_action_id}`;
+      return `${name} ${c.operator} ${c.threshold_value}`;
     }).join(` ${rule.condition_operator} `);
   }
 

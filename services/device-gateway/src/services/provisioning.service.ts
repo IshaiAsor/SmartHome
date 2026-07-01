@@ -25,7 +25,7 @@ export interface CapabilityInput {
 }
 
 class ProvisioningService {
-  // Device-facing single call. The catalog (device type + capability blueprints) is no
+  // Device-facing single call. The catalog (device type + capabilities) is no
   // longer written here — it is published from firmware source by the manifest generator
   // (locally `npm run catalog:seed`, in prod the CI ingest). Provisioning only VALIDATES
   // the firmware's (type, version) against that catalog, then binds the user_device.

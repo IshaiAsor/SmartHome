@@ -2,22 +2,27 @@ import { HttpClient } from '@angular/common/http';
 import { inject, Injectable } from '@angular/core';
 import { Observable } from 'rxjs';
 import { environment } from 'src/environments/environment';
-import { GoogleActionType } from './google.actions.types.service';
-import { GoogleActionTrait } from './google.actions.traits.service';
+import { apiV2Url } from './api.config';
+export interface GoogleActionType { id: number; name: string; value: string; }
+export interface GoogleActionTrait { id: number; name: string; value: string; }
 
 @Injectable({
   providedIn: 'root'
 })
 export class DeviceMgmtService {
   private apiUrl = `${environment.apiUrl}`;
+  // New `api` service (F2.5) owns device list/rename/delete. The remaining methods below
+  // (provisioning, status, resets, capability activation) have no new-api home yet and stay on the
+  // monolith until device-gateway/F3.x land them.
+  private apiV2 = apiV2Url();
   private get gatewayUrl(): string {
     return environment.deviceGatewayUrl ||
-      (environment.production ? `${window.location.protocol}//device.${window.location.hostname}` : '');
+      (environment.production ? `${window.location.protocol}//device.${window.location.hostname}` : 'http://localhost:3004');
   }
   private http = inject(HttpClient);
 
   getDevices(): Observable<DeviceView[]> {
-    return this.http.get<DeviceView[]>(`${this.apiUrl}/api/mgmt/devices`);
+    return this.http.get<DeviceView[]>(`${this.apiV2}/api/devices`);
   }
 
   addDevice(deviceData: unknown): Observable<DeviceView> {
@@ -29,11 +34,11 @@ export class DeviceMgmtService {
   }
 
   updateDevice(deviceId: number, updates: unknown): Observable<DeviceView> {
-    return this.http.patch<DeviceView>(`${this.apiUrl}/api/mgmt/devices/${deviceId}`, updates);
+    return this.http.patch<DeviceView>(`${this.apiV2}/api/devices/${deviceId}`, updates);
   }
 
   deleteDevice(deviceId: number): Observable<void> {
-    return this.http.delete<void>(`${this.apiUrl}/api/mgmt/devices/${deviceId}`);
+    return this.http.delete<void>(`${this.apiV2}/api/devices/${deviceId}`);
   }
 
   reprovisionDevice(deviceId: number): Observable<void> {
@@ -60,40 +65,41 @@ export class DeviceMgmtService {
     return this.http.post<{ ok: true }>(`${this.gatewayUrl}/api/devices/${deviceId}/apply-update`, {});
   }
 
-  getDeviceBlueprints(deviceId: number): Observable<BlueprintView[]> {
-    return this.http.get<BlueprintView[]>(`${this.apiUrl}/api/mgmt/devices/${deviceId}/blueprints`);
+  getDeviceCapabilities(deviceId: number): Observable<CapabilityView[]> {
+    return this.http.get<CapabilityView[]>(`${this.apiV2}/api/devices/${deviceId}/capabilities`);
   }
 
-  activateBlueprint(
+  activateCapability(
     deviceId: number,
-    blueprintId: number,
+    capabilityId: number,
     telemetryIntervalMs?: number | null,
-    pins?: { pinNumber: number; pinMode: string }[],
-  ): Observable<void> {
-    return this.http.post<void>(`${this.apiUrl}/api/mgmt/devices/${deviceId}/actions/from-blueprint`, {
-      blueprintId,
+    pins?: { capability_pin_id: number; pin_number: number }[],
+  ): Observable<{ id: number }> {
+    return this.http.post<{ id: number }>(`${this.apiV2}/api/devices/${deviceId}/actions`, {
+      capability_id: capabilityId,
       telemetry_interval_ms: telemetryIntervalMs ?? null,
-      pins: pins ?? null,
+      pins: pins ?? [],
     });
   }
 
   updateActivatedAction(
     deviceId: number,
     userActionId: number,
-    updates: { name: string; telemetry_interval_ms?: number | null; pins?: { pinNumber: number; pinMode: string }[] },
+    updates: { name: string; telemetry_interval_ms?: number | null; pins?: { capability_pin_id: number; pin_number: number }[] },
   ): Observable<void> {
-    return this.http.patch<void>(`${this.apiUrl}/api/mgmt/devices/${deviceId}/actions/${userActionId}`, updates);
+    return this.http.patch<void>(`${this.apiV2}/api/devices/${deviceId}/actions/${userActionId}`, updates);
   }
 }
 
 export interface PinSlot {
+  id: number;
   key: string;
   label: string;
   mode: string;
   description?: string;
 }
 
-export interface BlueprintInstanceView {
+export interface UserActionView {
   id: number;
   name: string;
   mqttName: string;
@@ -102,7 +108,7 @@ export interface BlueprintInstanceView {
   status: 'active' | 'deprecated';
 }
 
-export interface BlueprintView {
+export interface CapabilityView {
   id: number;
   capability_key: string;
   label: string;
@@ -111,7 +117,7 @@ export interface BlueprintView {
   mqtt_action_name: string;
   min_telemetry_interval_ms: number | null;
   configurable_pins: PinSlot[];
-  instances: BlueprintInstanceView[];
+  instances: UserActionView[];
 }
 
 export interface DeviceView {
@@ -145,6 +151,7 @@ export interface DeviceActionView {
   deviceName: string;
   type: string;
   googleTraits: GoogleActionTrait[];
+  defaultTraitId: number | null;
   state: unknown;
   deviceId: number;
   googleType: GoogleActionType | null;
@@ -152,6 +159,7 @@ export interface DeviceActionView {
   lastOnlineDate?: Date | null;
   pins: DeviceActionPinView[];
   sortOrder: number;
+  groupId: number | null;
   groupName: string | null;
   implementation_type: string;
   // Transient UI flag: a command was sent and is awaiting the device's ack. Set on

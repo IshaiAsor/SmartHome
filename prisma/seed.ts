@@ -3,47 +3,61 @@ import bcrypt from 'bcryptjs';
 
 const pool = new pg.Pool({ connectionString: process.env.DATABASE_URL });
 
+// Re-apply DB privileges that a `prisma migrate reset` (DROP/CREATE SCHEMA
+// public) silently wipes. Roles are cluster-level so they survive the reset,
+// but their grants do not — without this the EMQX postgres authenticator goes
+// `disconnected` and every device/app MQTT login is refused as "Not authorized".
+// Mirrors local-sql/010.init-app-user.sh; safe to run repeatedly.
+async function reapplyGrants() {
+  const backendUser = process.env.BACKEND_DB_USER;
+  const emqxUser = process.env.EMQX_DB_USERNAME;
+
+  if (!backendUser) throw new Error('BACKEND_DB_USER env var is required');
+  if (!emqxUser) throw new Error('EMQX_DB_USERNAME env var is required');
+
+  const ident = (s: string) => `"${s.replace(/"/g, '""')}"`;
+  console.log(`🔑 Re-applying grants for ${backendUser} and ${emqxUser}`);
+
+  const roleExists = async (role: string) =>
+    (await pool.query('SELECT 1 FROM pg_roles WHERE rolname = $1', [role])).rowCount! > 0;
+
+  if (await roleExists(backendUser)) {
+    const b = ident(backendUser);
+    await pool.query(`
+      GRANT USAGE, CREATE ON SCHEMA public TO ${b};
+      GRANT SELECT, INSERT, UPDATE, DELETE ON ALL TABLES IN SCHEMA public TO ${b};
+      GRANT USAGE, SELECT ON ALL SEQUENCES IN SCHEMA public TO ${b};
+      ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT SELECT, INSERT, UPDATE, DELETE ON TABLES TO ${b};
+      ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT USAGE, SELECT ON SEQUENCES TO ${b};
+    `);
+  } else {
+    console.warn(`   ⚠️  role ${backendUser} not found — skipping backend grants`);
+  }
+
+  // EMQX postgres authenticator only needs to read mqtt_user — nothing else.
+  if (await roleExists(emqxUser)) {
+    const e = ident(emqxUser);
+    await pool.query(`
+      GRANT USAGE ON SCHEMA public TO ${e};
+      GRANT SELECT ON mqtt_user TO ${e};
+      ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT SELECT ON TABLES TO ${e};
+    `);
+  } else {
+    console.warn(`   ⚠️  role ${emqxUser} not found — skipping EMQX grants`);
+  }
+}
+
 async function main() {
-  // Google Action Types
-  console.log('🌱 Seeding google_action_types...');
-  await pool.query(`
-    INSERT INTO google_action_types (name, value) VALUES
-      ('Outlet',     'action.devices.types.OUTLET'),
-      ('Light',      'action.devices.types.LIGHT'),
-      ('Switch',     'action.devices.types.SWITCH'),
-      ('Thermostat', 'action.devices.types.THERMOSTAT'),
-      ('Fan',        'action.devices.types.FAN'),
-      ('Blinds',     'action.devices.types.BLINDS'),
-      ('Sensor',     'action.devices.types.SENSOR'),
-      ('Camera',     'action.devices.types.CAMERA')
-    ON CONFLICT (value) DO NOTHING
-  `);
+  await reapplyGrants();
 
-  // Google Device Traits
-  console.log('🌱 Seeding google_device_traits...');
-  await pool.query(`
-    INSERT INTO google_device_traits (name, value, valid_parameters) VALUES
-      ('On / Off',             'action.devices.traits.OnOff',              '["on","off"]'),
-      ('Brightness',           'action.devices.traits.Brightness',         '["brightness"]'),
-      ('Color Setting',        'action.devices.traits.ColorSetting',       '["color"]'),
-      ('Open / Close',         'action.devices.traits.OpenClose',          '["openPercent", "openDirection"]'),
-      ('Temperature Setting',  'action.devices.traits.TemperatureSetting', '["thermostatMode", "thermostatTemperatureSetpoint", "thermostatTemperatureSetpointHigh", "thermostatTemperatureSetpointLow"]'),
-      ('Fan Speed',            'action.devices.traits.FanSpeed',           '["fanSpeed", "fanSpeedRelativeWeight", "fanSpeedRelativePercentage"]'),
-      ('Water Level',          'action.devices.traits.WaterLevel',         '["waterLevelPercent"]'),
-      ('pH Level',             'action.devices.traits.PhLevel',            '["phValue"]'),
-      ('TDS Level',            'action.devices.traits.TdsLevel',           '["tdsPpm"]'),
-      ('CO2 Level',            'action.devices.traits.CO2Level',           '["co2Ppm"]'),
-      ('Humidity Setting',     'action.devices.traits.HumiditySetting',    '["humidityAmbientPercent"]'),
-      ('Camera Stream',        'action.devices.traits.CameraStream',       '[]'),
-      ('Lock / Unlock',        'action.devices.traits.LockUnlock',         '["isLocked"]'),
-      ('Start / Stop',         'action.devices.traits.StartStop',          '["isRunning"]')
-    ON CONFLICT (value) DO NOTHING
-  `);
+  // Seed the mqtt-service's MQTT broker credentials into the EMQX auth table.
+  // These are NOT the backend's PostgreSQL user — see BACKEND_DB_USER for that.
+  const mqttUsername = process.env.MQTT_APP_USERNAME;
+  const mqttPassword = process.env.MQTT_APP_PASSWORD;
+  if (!mqttUsername) throw new Error('MQTT_APP_USERNAME env var is required');
+  if (!mqttPassword) throw new Error('MQTT_APP_PASSWORD env var is required');
 
-  // MQTT app user
-  const mqttUsername = process.env.MQTT_APP_USERNAME || 'ts_backend_app';
-  const mqttPassword = process.env.MQTT_APP_PASSWORD || 'password123';
-  console.log(`🌱 Seeding MQTT user: ${mqttUsername}`);
+  console.log(`🌱 Seeding MQTT broker user: ${mqttUsername}`);
   await pool.query(
     `INSERT INTO mqtt_user (username, password_hash, is_superuser)
      VALUES ($1, $2, true)
@@ -51,18 +65,37 @@ async function main() {
     [mqttUsername, await bcrypt.hash(mqttPassword, 10)]
   );
 
-  // Owner user
+  // Pre-seed the owner as a Google-type admin placeholder (no password, no google_id yet).
+  // On first Google login the OAuth flow links the google_id to this row automatically.
   const ownerEmail = process.env.OWNER_EMAIL;
-  const ownerPassword = process.env.OWNER_PASSWORD;
-  const ownerUsername = process.env.OWNER_USERNAME;
-  if (ownerEmail && ownerPassword) {
-    console.log(`🌱 Seeding owner user: ${ownerEmail}`);
+  if (ownerEmail) {
+    console.log(`🌱 Seeding owner placeholder: ${ownerEmail}`);
     await pool.query(
-      `INSERT INTO users (email, user_role, user_name, password, user_type)
-       VALUES ($1, 'admin', $2, $3, 1)
+      `INSERT INTO users (email, user_role, user_type)
+       VALUES ($1, 'admin', 1)
        ON CONFLICT (email) DO NOTHING`,
-      [ownerEmail, ownerUsername ?? null, await bcrypt.hash(ownerPassword, 10)]
+      [ownerEmail]
     );
+  }
+
+  // Credential admin — a username+password admin so the credentials-login flow (F2) works on a
+  // fresh stack (the Google placeholder above has no password, so it can't credential-login).
+  // This runs POST-migration (unlike local-sql/, which is pre-migration and can't touch app
+  // tables). Credentials come ONLY from OWNER_USERNAME / OWNER_PASSWORD — there is no default, so
+  // if either is unset no admin is created (never a default-credential backdoor). This is what the
+  // device-sim and e2e tests log in as.
+  const adminUser = process.env.OWNER_USERNAME;
+  const adminPass = process.env.OWNER_PASSWORD;
+  if (adminUser && adminPass) {
+    console.log(`🌱 Seeding credential admin: ${adminUser}`);
+    await pool.query(
+      `INSERT INTO users (user_name, email, password, user_role, user_type, terms_accepted_at)
+       VALUES ($1, $2, $3, 'admin', 0, now())
+       ON CONFLICT (user_name) DO UPDATE SET password = EXCLUDED.password, user_role = 'admin'`,
+      [adminUser, `${adminUser}@lattice.local`, await bcrypt.hash(adminPass, 10)]
+    );
+  } else {
+    console.log('ℹ️  OWNER_USERNAME/OWNER_PASSWORD not set — skipping credential admin seed');
   }
 
   console.log('✅ Seed completed.');

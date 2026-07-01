@@ -21,7 +21,7 @@ async function main() {
   app.use(exceptionMiddleware);
 
   const server = http.createServer(app);
-  initSocket(server, ch);
+  await initSocket(server, ch);
 
   server.listen(env.port, () => log.info({ port: env.port }, 'socket-server listening'));
 }

@@ -1,0 +1,28 @@
+{
+  "name": "@lattice/api",
+  "version": "0.1.0",
+  "private": true,
+  "main": "dist/index.js",
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "dev": "ts-node -P tsconfig.json src/index.ts",
+    "start": "node dist/index.js"
+  },
+  "dependencies": {
+    "@lattice/logger": "*",
+    "@lattice/otel": "*",
+    "@lattice/jwt": "*",
+    "@lattice/prisma-client": "*",
+    "bcrypt": "^6.0.0",
+    "express": "^4.21.2",
+    "express-rate-limit": "^8.5.2",
+    "google-auth-library": "^10.6.1"
+  },
+  "devDependencies": {
+    "@types/bcrypt": "^6.0.0",
+    "@types/express": "^4.17.21",
+    "@types/node": "^20.0.0",
+    "ts-node": "^10.9.2",
+    "typescript": "^5.9.3"
+  }
+}

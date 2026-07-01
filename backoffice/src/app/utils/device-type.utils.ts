@@ -63,6 +63,52 @@ export function hasTrait(action: DeviceActionView, traitValue: string): boolean 
   return action.googleTraits.some(t => t.value === traitValue);
 }
 
+// Returns the trait value string for the currently active (displayed) control.
+// Resolution order: user's saved defaultTraitId → first trait in list → null.
+export function activeTraitValue(action: DeviceActionView): string | null {
+  const active = action.googleTraits.find(t => t.id === action.defaultTraitId)
+    ?? action.googleTraits[0];
+  return active?.value ?? null;
+}
+
+// Sensor-only trait values that are read-only display widgets (not interactive controls).
+// These are excluded from the switcher chip row and never conflict with control traits.
+export const SENSOR_TRAIT_VALUES = new Set([
+  'action.devices.traits.TemperatureSetting',
+  'action.devices.traits.HumiditySetting',
+  'action.devices.traits.WaterLevel',
+  'action.devices.traits.PhLevel',
+  'action.devices.traits.TdsLevel',
+  'action.devices.traits.CO2Level',
+]);
+
+// Returns only the controllable (interactive) traits — used to decide whether to show
+// the switcher chip row and which chips to render.
+export function controllableTraits(action: DeviceActionView) {
+  return action.googleTraits.filter(t => !SENSOR_TRAIT_VALUES.has(t.value));
+}
+
+// Maps a Google trait value to a mat-icon name for use in the trait-switcher chips.
+export function traitIconName(traitValue: string): string {
+  switch (traitValue) {
+    case 'action.devices.traits.OnOff':               return 'power_settings_new';
+    case 'action.devices.traits.Brightness':          return 'light_mode';
+    case 'action.devices.traits.FanSpeed':            return 'toys_fan';
+    case 'action.devices.traits.ColorSetting':        return 'palette';
+    case 'action.devices.traits.LockUnlock':          return 'lock';
+    case 'action.devices.traits.OpenClose':           return 'expand_more';
+    case 'action.devices.traits.StartStop':           return 'play_arrow';
+    case 'action.devices.traits.ArmDisarm':           return 'shield';
+    case 'action.devices.traits.TemperatureSetting':  return 'thermometer';
+    case 'action.devices.traits.HumiditySetting':     return 'humidity_high';
+    case 'action.devices.traits.WaterLevel':          return 'water';
+    case 'action.devices.traits.PhLevel':             return 'science';
+    case 'action.devices.traits.TdsLevel':            return 'grain';
+    case 'action.devices.traits.CO2Level':            return 'co2';
+    default:                                          return 'settings';
+  }
+}
+
 export const COLOR_OPTIONS = ['red', 'green', 'blue', 'orange', 'off'] as const;
 
 export function iconForAction(action: DeviceActionView): string {
@@ -85,7 +131,7 @@ export function iconForAction(action: DeviceActionView): string {
 }
 
 // Returns implementation_type only when the action has no Google traits assigned.
-// Use as a rendering fallback for pure blueprint-activated actions.
+// Use as a rendering fallback for capability-activated actions with no Google traits.
 export function implTypeOf(action: DeviceActionView): string | null {
   return action.googleTraits.length === 0 ? (action.implementation_type ?? null) : null;
 }

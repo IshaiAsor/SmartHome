@@ -11,27 +11,29 @@
   align-items: center;
   padding: 12px 8px 10px 16px;
   gap: 8px;
-  border-bottom: 1px solid #e8eaf6;
-  background: #f3f4ff;
+  border-bottom: 1px solid var(--border);
+  background: var(--card-bg);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
 }
 
 .sheet-folder-icon {
   font-size: 20px;
   width: 20px;
   height: 20px;
-  color: #5c6bc0;
+  color: var(--primary);
 }
 
 .sheet-title {
   font-size: 15px;
   font-weight: 600;
-  color: #3949ab;
+  color: var(--text);
 }
 
 .sheet-count {
   font-size: 11px;
   color: #fff;
-  background: #5c6bc0;
+  background: var(--primary);
   border-radius: 10px;
   padding: 0 6px;
   line-height: 18px;
@@ -47,8 +49,8 @@
   gap: 6px;
   height: 0;
   overflow: hidden;
-  background: #e8f5e9;
-  color: #2e7d32;
+  background: rgba(46, 204, 113, 0.10);
+  color: var(--online);
   font-size: 12px;
   font-weight: 600;
   transition: height 0.2s;
@@ -60,7 +62,7 @@
 /* ── Drag rail (same as dashboard) ──────────────────────────────── */
 .drag-rail {
   width: 16px;
-  background: #f0f0f0;
+  background: var(--surface-alt);
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -81,14 +83,14 @@
   width: 4px;
   height: 4px;
   border-radius: 50%;
-  background: #bdbdbd;
+  background: var(--text-dim);
 }
 
 /* ── CDK placeholder inside sheet ───────────────────────────────── */
 .drag-placeholder-sheet {
   width: 240px;
   height: 300px;
-  border: 2px dashed #c5cae9;
+  border: 2px dashed var(--border-strong);
   border-radius: 12px;
   margin: 10px;
   background: transparent;
@@ -113,7 +115,7 @@
   margin: 10px;
   width: 240px;
   height: 300px;
-  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.08);
+  box-shadow: var(--card-shadow);
 }
 
 .device-card {
@@ -121,8 +123,10 @@
   height: 100%;
   display: flex;
   flex-direction: column;
-  background: #fff;
-  border: 1px solid #e0e0e0;
+  background: var(--card-bg);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border: 1px solid var(--border);
   border-left: none;
   box-sizing: border-box;
   border-radius: 0 12px 12px 0;
@@ -133,19 +137,19 @@
   align-items: center;
   padding: 10px 6px 8px 12px;
   gap: 6px;
-  border-bottom: 1px solid #f0f0f0;
+  border-bottom: 1px solid var(--border);
 }
 
 .device-icon {
   font-size: 18px;
-  color: #757575;
+  color: var(--text-muted);
   flex-shrink: 0;
 }
 
 .card-name {
   font-size: 13px;
   font-weight: 500;
-  color: #212121;
+  color: var(--text);
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -162,11 +166,11 @@
 }
 
 .status-dot.online {
-  background: #4caf50;
-  box-shadow: 0 0 4px rgba(76, 175, 80, 0.5);
+  background: var(--online);
+  box-shadow: 0 0 4px var(--online-glow);
 }
 
-.status-dot.offline { background: #9e9e9e; }
+.status-dot.offline { background: var(--offline); }
 
 .card-menu-btn {
   width: 28px !important;
@@ -175,7 +179,16 @@
   flex-shrink: 0;
 }
 
-.card-menu-btn mat-icon { font-size: 16px; color: #9e9e9e; }
+.card-menu-btn mat-icon { font-size: 16px; color: var(--text-muted); }
+
+.card-content.pending {
+  animation: card-pending-pulse 1s ease-in-out infinite;
+}
+
+@keyframes card-pending-pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.5; }
+}
 
 .card-content {
   flex: 1;
@@ -197,14 +210,14 @@
   align-items: center;
   justify-content: center;
   gap: 6px;
-  background: rgba(255, 255, 255, 0.55);
+  background: var(--offline-overlay-bg);
   backdrop-filter: blur(2px);
-  color: #9e9e9e;
+  color: var(--text-muted);
   z-index: 1;
 }
 
-.offline-overlay mat-icon { font-size: 28px; width: 28px; height: 28px; color: #bdbdbd; }
-.offline-overlay span { font-size: 12px; font-weight: 500; letter-spacing: 0.08em; text-transform: uppercase; }
+.offline-overlay mat-icon { font-size: 28px; width: 28px; height: 28px; color: var(--offline-overlay-icon); }
+.offline-overlay span { font-size: 12px; font-weight: 500; letter-spacing: 0.08em; text-transform: uppercase; color: var(--offline-overlay-text); }
 
 .card-content .speed-dial { width: 100%; }
 
@@ -212,27 +225,27 @@
 
 .power-btn {
   width: 52px; height: 52px; border-radius: 50%;
-  border: 2px solid #e0e0e0; background: #fafafa; color: #bdbdbd;
+  border: 2px solid var(--border-strong); background: var(--surface-alt); color: var(--text-muted);
   cursor: pointer; display: flex; align-items: center; justify-content: center;
   transition: background 0.2s, border-color 0.2s, color 0.2s, box-shadow 0.2s; outline: none;
 }
 
 .power-btn mat-icon { font-size: 24px; width: 24px; height: 24px; }
-.power-btn:hover { border-color: #bdbdbd; background: #f5f5f5; }
-.power-btn.on { background: #e8f5e9; border-color: #4caf50; color: #4caf50; box-shadow: 0 0 0 4px rgba(76, 175, 80, 0.12); }
-.power-btn.on:hover { background: #c8e6c9; box-shadow: 0 0 0 6px rgba(76, 175, 80, 0.15); }
+.power-btn:hover { border-color: var(--primary); background: var(--nav-active-bg); color: var(--primary); }
+.power-btn.on { background: var(--nav-active-bg); border-color: var(--primary); color: var(--primary); box-shadow: 0 0 0 4px var(--primary-glow); }
+.power-btn.on:hover { box-shadow: 0 0 0 6px var(--primary-glow); }
 .power-btn:disabled { opacity: 0.4; cursor: not-allowed; }
 
 .speed-dial { width: 100%; cursor: pointer; user-select: none; touch-action: none; display: block; }
-.dial-track { fill: none; stroke: #eeeeee; stroke-width: 8; stroke-linecap: round; }
-.dial-active { fill: none; stroke: #1976d2; stroke-width: 8; stroke-linecap: round; }
-.dial-thumb { fill: white; stroke: #1976d2; stroke-width: 2.5; filter: drop-shadow(0 1px 3px rgba(25,118,210,0.35)); }
-.dial-value { font-size: 18px; font-weight: 300; fill: #212121; }
-.dial-unit { font-size: 10px; fill: #9e9e9e; letter-spacing: 0.04em; }
+.dial-track { fill: none; stroke: var(--border-strong); stroke-width: 8; stroke-linecap: round; }
+.dial-active { fill: none; stroke: var(--primary); stroke-width: 8; stroke-linecap: round; }
+.dial-thumb { fill: var(--card-bg); stroke: var(--primary); stroke-width: 2.5; filter: drop-shadow(0 1px 3px var(--primary-glow)); }
+.dial-value { font-size: 18px; font-weight: 300; fill: var(--text); }
+.dial-unit { font-size: 10px; fill: var(--text-muted); letter-spacing: 0.04em; }
 
 .sensor-display { display: flex; align-items: center; gap: 4px; justify-content: center; }
-.sensor-value { font-size: 2rem; font-weight: 300; color: #212121; line-height: 1; }
-.sensor-unit { font-size: 1rem; color: #9e9e9e; }
+.sensor-value { font-size: 2rem; font-weight: 300; color: var(--primary); line-height: 1; }
+.sensor-unit { font-size: 1rem; color: var(--text-muted); }
 
 .card-disabled { opacity: 0.75; filter: grayscale(50%); }
 
@@ -261,7 +274,7 @@
   flex-direction: column;
   align-items: center;
   gap: 8px;
-  color: #bdbdbd;
+  color: var(--text-dim);
 }
 
 .camera-placeholder .material-symbols-outlined { font-size: 48px; }
@@ -271,4 +284,36 @@
   font-weight: 500;
   letter-spacing: 0.05em;
   text-transform: uppercase;
+}
+
+
+/* ── Trait switcher strip ────────────────────────────────────────── */
+.trait-switcher {
+  display: flex;
+  justify-content: center;
+  gap: 2px;
+  padding-top: 6px;
+  border-top: 1px solid var(--border);
+  margin-top: auto;
+}
+
+.trait-chip {
+  width: 32px !important;
+  height: 32px !important;
+  line-height: 32px !important;
+  color: var(--text-muted);
+  transition: color 0.15s, background 0.15s;
+}
+
+.trait-chip mat-icon {
+  font-size: 18px;
+  width: 18px;
+  height: 18px;
+  line-height: 18px;
+}
+
+.trait-chip.active {
+  color: var(--color-primary, #4f8ef7);
+  background: color-mix(in srgb, var(--color-primary, #4f8ef7) 12%, transparent);
+  border-radius: 8px;
 }

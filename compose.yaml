@@ -181,6 +181,8 @@ services:
       dockerfile: prisma/Dockerfile
     environment:
       - DATABASE_URL=postgresql://postgres:${DB_PASSWORD}@postgres:5432/${DB_NAME:-emqx_data}?sslmode=disable
+      - BACKEND_DB_USER=${BACKEND_DB_USER}
+      - EMQX_DB_USERNAME=${EMQX_DB_USERNAME}
       - MQTT_APP_USERNAME=${MQTT_APP_USERNAME}
       - MQTT_APP_PASSWORD=${MQTT_APP_PASSWORD}
       - OWNER_EMAIL=${OWNER_EMAIL}

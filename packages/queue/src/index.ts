@@ -155,7 +155,8 @@ export async function consume<T>(
       const payload = JSON.parse(msg.content.toString()) as T;
       await handler(payload, msg);
       ch.ack(msg);
-    } catch {
+    } catch (err) {
+      console.error('[queue] consumer error — nacking to DLQ', { queue, err });
       // nack without requeue — message goes to DLQ via x-dead-letter-exchange
       ch.nack(msg, false, false);
     }

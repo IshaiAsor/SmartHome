@@ -18,8 +18,10 @@
   height: 100%;
   display: flex;
   flex-direction: column;
-  background: #f3f4ff;
-  border: 1px solid #c5cae9;
+  background: var(--card-bg);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border: 1px solid var(--border);
   border-left: none;
   box-sizing: border-box;
   cursor: pointer;
@@ -27,28 +29,28 @@
   border-radius: 0 12px 12px 0;
 }
 
-.group-tile:hover { background: #eef0fb; }
+.group-tile:hover { background: var(--surface); }
 
 .group-header {
   display: flex;
   align-items: center;
   padding: 10px 6px 8px 12px;
   gap: 6px;
-  border-bottom: 1px solid #e8eaf6;
+  border-bottom: 1px solid var(--border);
 }
 
 .group-folder-icon {
   font-size: 18px;
   width: 18px;
   height: 18px;
-  color: #5c6bc0;
+  color: var(--primary);
   flex-shrink: 0;
 }
 
 .group-name {
   font-size: 13px;
   font-weight: 500;
-  color: #212121;
+  color: var(--text);
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -60,7 +62,7 @@
 .group-count {
   font-size: 11px;
   color: #fff;
-  background: #5c6bc0;
+  background: var(--primary);
   border-radius: 10px;
   padding: 0 6px;
   line-height: 18px;
@@ -76,7 +78,7 @@
 
 .card-menu-btn mat-icon {
   font-size: 16px;
-  color: #9e9e9e;
+  color: var(--text-muted);
 }
 
 .icon-grid {
@@ -96,7 +98,7 @@
   width: 56px;
   height: 56px;
   border-radius: 14px;
-  background: #e8eaf6;
+  background: var(--surface-alt);
 }
 
 .icon-cell.empty {
@@ -108,5 +110,5 @@
 
 .icon-cell .material-symbols-outlined {
   font-size: 28px;
-  color: #5c6bc0;
+  color: var(--primary);
 }

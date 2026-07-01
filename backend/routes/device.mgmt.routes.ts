@@ -1,5 +1,4 @@
 import express from 'express';
-import { deviceMgmtService, BlueprintView } from '../services/device.mgmt.service';
 import commandDispatch from '../services/command.dispatch.service';
 import { verifyToken } from '../middlewares/auth.middleware';
 import { exceptionHandler } from '../middlewares/exception.middleware';
@@ -9,54 +8,9 @@ const router = express.Router();
 router.use(verifyToken(JwtPurpose.app_usage));
 router.use(exceptionHandler);
 
-router.get('/', async (req, res) => {
-  const userId = req.user.id;
-  const devices = await deviceMgmtService.getUserDevices(userId);
-  res.json(devices);
-});
-
-router.patch('/:deviceId', async (req, res) => {
-  const userId = req.user.id;
-  const deviceId = parseInt(req.params.deviceId);
-  const updates = req.body;
-  const updatedDevice = await deviceMgmtService.updateDevice(userId, deviceId, updates);
-  res.json(updatedDevice);
-});
-
-router.delete('/:deviceId', async (req, res) => {
-  const userId = req.user.id;
-  const deviceId = parseInt(req.params.deviceId);
-  await deviceMgmtService.deleteDevice(userId, deviceId);
-  res.status(204).send();
-});
-
-router.get('/:deviceId/blueprints', async (req, res) => {
-  const userId = req.user.id;
-  const deviceId = parseInt(req.params.deviceId);
-  const blueprints = await deviceMgmtService.getDeviceBlueprints(userId, deviceId);
-  res.json(blueprints);
-});
-
-router.post('/:deviceId/actions/from-blueprint', async (req, res) => {
-  const userId = req.user.id;
-  const deviceId = parseInt(req.params.deviceId);
-  const { blueprintId, telemetry_interval_ms, pins } = req.body;
-  const action = await deviceMgmtService.activateBlueprintAction(userId, deviceId, blueprintId, telemetry_interval_ms ?? null, pins ?? undefined);
-  res.status(201).json(action);
-});
-
-router.patch('/:deviceId/actions/:userActionId', async (req, res) => {
-  const userId = req.user.id;
-  const deviceId = parseInt(req.params.deviceId);
-  const userActionId = parseInt(req.params.userActionId);
-  const { name, telemetry_interval_ms, pins } = req.body;
-  await deviceMgmtService.updateBlueprintAction(userId, deviceId, userActionId, {
-    name,
-    telemetryIntervalMs: telemetry_interval_ms,
-    pins,
-  });
-  res.status(204).send();
-});
+// Device list/rename/delete AND capability activation migrated to
+// the new `api` service (F2.5). The handlers below serve only the not-yet-migrated
+// device-lifecycle commands (reprovision/resets/restart).
 
 router.post('/:deviceId/reprovision', async (req, res) => {
   const userId = req.user.id;

@@ -9,18 +9,22 @@
   width: 100%;
 }
 
+/* ── Section labels ─────────────────────────────────────────────── */
+
 .section-label {
   font-size: 11px;
   font-weight: 700;
   letter-spacing: 0.1em;
   text-transform: uppercase;
-  color: #1976d2;
+  color: var(--stage-vlm);
   margin: 12px 0 4px;
 }
 
 .section-label.then {
-  color: #388e3c;
+  color: var(--primary);
 }
+
+/* ── Match toggle ────────────────────────────────────────────────── */
 
 .operator-toggle {
   display: flex;
@@ -29,10 +33,12 @@
 }
 
 /* ── Condition card ──────────────────────────────────────────────── */
+
 .condition-row {
-  background: #f8f9fa;
-  border: 1px solid #e0e0e0;
-  border-radius: 8px;
+  background: color-mix(in srgb, var(--stage-vlm) 5%, transparent);
+  border: 1px solid var(--border);
+  border-left: 3px solid color-mix(in srgb, var(--stage-vlm) 50%, transparent);
+  border-radius: 10px;
   padding: 10px 12px 4px;
   margin-bottom: 8px;
   position: relative;
@@ -50,28 +56,32 @@
   font-weight: 700;
   letter-spacing: 0.06em;
   text-transform: uppercase;
-  background: #e3f2fd;
-  color: #1565c0;
-  border-radius: 4px;
+  background: color-mix(in srgb, var(--stage-vlm) 15%, transparent);
+  color: var(--stage-vlm);
+  border: 1px solid color-mix(in srgb, var(--stage-vlm) 30%, transparent);
+  border-radius: var(--radius-chip, 6px);
   padding: 3px 7px;
   flex-shrink: 0;
 }
 
 .condition-type-badge.schedule {
-  background: #f3e5f5;
-  color: #6a1b9a;
+  background: color-mix(in srgb, var(--primary) 15%, transparent);
+  color: var(--primary);
+  border-color: color-mix(in srgb, var(--primary) 30%, transparent);
 }
 
 .condition-type-badge.device-status {
-  background: #e8f5e9;
-  color: #2e7d32;
+  background: color-mix(in srgb, var(--online) 15%, transparent);
+  color: var(--online);
+  border-color: color-mix(in srgb, var(--online) 30%, transparent);
 }
 
 .condition-header .header-spacer { flex: 1; }
 
-.remove-btn { color: #e57373; }
+.remove-btn { color: var(--error, #ef5350); }
 
 /* ── State / threshold fields ────────────────────────────────────── */
+
 .state-fields {
   display: grid;
   grid-template-columns: 1fr auto auto;
@@ -83,6 +93,7 @@
 .val-field { width: 100px; }
 
 /* ── Schedule fields ─────────────────────────────────────────────── */
+
 .schedule-fields {
   display: flex;
   flex-direction: column;
@@ -99,10 +110,12 @@
 }
 
 /* ── Action card ─────────────────────────────────────────────────── */
+
 .action-row {
-  background: #f1f8e9;
-  border: 1px solid #c8e6c9;
-  border-radius: 8px;
+  background: color-mix(in srgb, var(--primary) 5%, transparent);
+  border: 1px solid var(--border);
+  border-left: 3px solid color-mix(in srgb, var(--primary) 50%, transparent);
+  border-radius: 10px;
   padding: 10px 12px 4px;
   margin-bottom: 8px;
 }
@@ -126,12 +139,13 @@
 .delay-field     { width: 84px; }
 
 /* ── Sensor note ─────────────────────────────────────────────────── */
+
 .sensor-note {
   display: flex;
   align-items: center;
   gap: 6px;
   font-size: 12px;
-  color: #9e9e9e;
+  color: var(--text-muted);
   margin: 0 0 8px;
 }
 
@@ -141,28 +155,38 @@
   height: 16px;
 }
 
-/* ── Add buttons ─────────────────────────────────────────────────── */
+/* ── Add / stroked buttons ───────────────────────────────────────── */
+
 .add-btn {
+  width: 100%;
   margin-bottom: 4px;
+  border-color: var(--border) !important;
+  color: var(--text-muted) !important;
 }
 
 /* ── Cooldown row ────────────────────────────────────────────────── */
+
 .cooldown-row {
   display: flex;
   align-items: flex-start;
   gap: 12px;
   margin-top: 12px;
   margin-bottom: 8px;
-  border-top: 1px solid #f0f0f0;
+  border-top: 1px solid var(--border);
   padding-top: 12px;
 }
 
 .cooldown-label {
   font-size: 13px;
-  color: #616161;
+  color: var(--text-muted);
   flex-shrink: 0;
-  /* align with the input inside the outline field, not the hint subscript */
   padding-top: 16px;
 }
 
 .cooldown-field { width: 110px; }
+
+/* ── Emergency checkbox ──────────────────────────────────────────── */
+
+.emergency-toggle {
+  margin-bottom: 4px;
+}

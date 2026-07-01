@@ -54,7 +54,7 @@ export class ProvisioningService {
   private apiUrl = `${environment.apiUrl}`;
   private get gatewayUrl(): string {
     return environment.deviceGatewayUrl ||
-      (environment.production ? `${window.location.protocol}//device.${window.location.hostname}` : '');
+      (environment.production ? `${window.location.protocol}//device.${window.location.hostname}` : 'http://localhost:3004');
   }
   private provisioningProgress$ = new Subject<ProvisioningProgress>();
   private http = inject(HttpClient);

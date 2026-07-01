@@ -1,15 +1,26 @@
-.header {
+.rules-page {
+  padding: 20px 24px;
+  max-width: 900px;
+  margin: 0 auto;
+}
+
+/* ── Header ─────────────────────────────────────────────────────────── */
+
+.page-header {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 16px 24px 8px;
+  margin-bottom: 20px;
 }
 
-.header h1 {
+.page-header h2 {
   margin: 0;
   font-size: 22px;
-  font-weight: 500;
+  font-weight: 600;
+  color: var(--text);
 }
+
+/* ── Empty state ─────────────────────────────────────────────────────── */
 
 .empty-state {
   display: flex;
@@ -17,7 +28,9 @@
   align-items: center;
   justify-content: center;
   padding: 60px 24px;
-  color: #9e9e9e;
+  text-align: center;
+  color: var(--text-muted);
+  margin-top: 8px;
 }
 
 .empty-icon {
@@ -25,38 +38,58 @@
   width: 48px;
   height: 48px;
   margin-bottom: 12px;
-  color: #bdbdbd;
+  color: var(--text-dim);
+}
+
+/* ── Rule cards ──────────────────────────────────────────────────────── */
+
+.rules-list {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
 }
 
 .rule-card {
-  margin: 8px 24px;
-  border-left: 4px solid #1976d2;
-  transition: opacity 0.2s;
+  overflow: hidden;
+  transition: box-shadow 0.15s ease, opacity 0.2s ease;
 }
 
 .rule-card.disabled {
-  opacity: 0.55;
-  border-left-color: #bdbdbd;
+  opacity: 0.50;
 }
 
-.rule-card-header {
+/* ── Card header ─────────────────────────────────────────────────────── */
+
+.rule-header {
   display: flex;
   align-items: center;
-  gap: 8px;
-  padding: 8px 8px 8px 16px;
-  border-bottom: 1px solid #f0f0f0;
+  gap: 6px;
+  padding: 10px 10px 10px 0;
+  border-bottom: 1px solid var(--border);
+  border-left: 4px solid var(--primary);
+  padding-left: 14px;
+}
+
+.rule-card.disabled .rule-header {
+  border-left-color: var(--offline);
 }
 
 .rule-icon {
   font-size: 20px;
-  color: #1976d2;
+  width: 20px;
+  height: 20px;
+  color: var(--primary);
   flex-shrink: 0;
+}
+
+.rule-card.disabled .rule-icon {
+  color: var(--offline);
 }
 
 .rule-name {
   font-size: 15px;
   font-weight: 500;
-  color: #212121;
+  color: var(--text);
   flex-shrink: 1;
   min-width: 0;
   overflow: hidden;
@@ -64,49 +97,95 @@
   white-space: nowrap;
 }
 
-.header-spacer {
-  flex: 1;
+.spacer { flex: 1; }
+
+.delete-btn mat-icon { color: var(--error); }
+
+/* ── Emergency rule accent ───────────────────────────────────────────── */
+
+.rule-card.emergency .rule-header { border-left-color: var(--error); }
+.rule-card.emergency .rule-icon { color: var(--error); }
+
+.emergency-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  background: color-mix(in srgb, var(--error) 15%, transparent);
+  color: var(--error);
+  border: 1px solid color-mix(in srgb, var(--error) 30%, transparent);
+  border-radius: var(--radius-chip);
+  padding: 2px 7px;
+  flex-shrink: 0;
 }
 
-.delete-btn mat-icon {
-  color: #e57373;
+.emergency-badge mat-icon {
+  font-size: 13px;
+  width: 13px;
+  height: 13px;
 }
+
+/* ── Flow row ────────────────────────────────────────────────────────── */
 
 .rule-flow {
   display: flex;
   align-items: center;
-  gap: 12px;
-  padding: 12px 16px;
+  gap: 10px;
+  padding: 14px 16px;
   flex-wrap: wrap;
 }
 
-.flow-label {
+.rule-segment {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  flex: 1;
+  min-width: 160px;
+}
+
+.flow-badge {
   font-size: 10px;
   font-weight: 700;
   letter-spacing: 0.08em;
-  color: #fff;
-  background: #1976d2;
-  border-radius: 4px;
-  padding: 2px 6px;
+  border-radius: var(--radius-chip);
+  padding: 2px 7px;
   flex-shrink: 0;
+  line-height: 1.6;
 }
 
-.flow-label.then {
-  background: #388e3c;
+.if-badge {
+  background: color-mix(in srgb, var(--stage-vlm) 15%, transparent);
+  color: var(--stage-vlm);
+  border: 1px solid color-mix(in srgb, var(--stage-vlm) 30%, transparent);
+}
+
+.then-badge {
+  background: color-mix(in srgb, var(--primary) 15%, transparent);
+  color: var(--primary);
+  border: 1px solid color-mix(in srgb, var(--primary) 30%, transparent);
 }
 
 .flow-text {
   font-size: 13px;
-  color: #424242;
+  color: var(--text-muted);
   flex: 1;
   min-width: 0;
+  line-height: 1.5;
 }
 
 .flow-arrow {
-  color: #9e9e9e;
-  font-size: 20px;
+  color: var(--text-dim);
+  font-size: 18px;
+  width: 18px;
+  height: 18px;
   flex-shrink: 0;
+  align-self: center;
 }
+
+/* ── Footer ──────────────────────────────────────────────────────────── */
 
 .rule-footer {
   display: flex;
@@ -114,13 +193,52 @@
   gap: 4px;
   padding: 6px 16px 10px;
   font-size: 11px;
-  color: #9e9e9e;
-  border-top: 1px solid #f5f5f5;
+  color: var(--text-muted);
+  border-top: 1px solid var(--border);
 }
 
 .footer-icon {
   font-size: 13px;
   width: 13px;
   height: 13px;
-  color: #bdbdbd;
+  color: var(--text-dim);
+}
+
+/* ── Tablet ──────────────────────────────────────────────────────────── */
+
+@media (max-width: 1024px) {
+  .rules-page {
+    padding: 16px;
+  }
+}
+
+/* ── Mobile ──────────────────────────────────────────────────────────── */
+
+@media (max-width: 599px) {
+  .rules-page {
+    padding: 12px;
+    padding-bottom: calc(var(--bottom-bar-height) + 16px);
+  }
+
+  .page-header h2 {
+    font-size: 18px;
+  }
+
+  .rule-flow {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 8px;
+    padding: 12px;
+  }
+
+  .flow-arrow {
+    transform: rotate(90deg);
+    align-self: center;
+    margin: 0 auto;
+  }
+
+  .rule-segment {
+    min-width: unset;
+    width: 100%;
+  }
 }

@@ -197,7 +197,7 @@
 }
 .section-label:first-of-type { margin-top: 0; }
 
-/* ── Blueprint / Action card grid ─────────────────────────────────────── */
+/* ── Capability / Action card grid ────────────────────────────────────── */
 .bp-grid {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
@@ -369,7 +369,7 @@
 }
 
 .no-selection,
-.no-blueprints {
+.no-capabilities {
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -381,14 +381,14 @@
 }
 
 .no-selection mat-icon,
-.no-blueprints mat-icon {
+.no-capabilities mat-icon {
   font-size: 48px;
   width: 48px;
   height: 48px;
   opacity: 0.4;
 }
 
-.no-blueprints span {
+.no-capabilities span {
   font-size: 13px;
   max-width: 300px;
 }

@@ -27,6 +27,12 @@ psql -v ON_ERROR_STOP=1 --username "$POSTGRES_USER" --dbname "$POSTGRES_DB" <<-E
     \$$;
 
     -- 4. Set Default Privileges
+    -- Explicit schema USAGE/CREATE: PG15+ no longer grants these to PUBLIC by
+    -- default, and a 'prisma migrate reset' (DROP/CREATE SCHEMA public) wipes
+    -- any inherited grants. Granting explicitly keeps EMQX auth + backend working.
+    GRANT USAGE, CREATE ON SCHEMA public TO ${BACKEND_DB_USER};
+    GRANT USAGE ON SCHEMA public TO ${EMQX_DB_USERNAME};
+
     ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT SELECT, INSERT, UPDATE, DELETE ON TABLES TO ${BACKEND_DB_USER};
     ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT USAGE, SELECT ON SEQUENCES TO ${BACKEND_DB_USER};
     ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT SELECT ON TABLES TO ${EMQX_DB_USERNAME};

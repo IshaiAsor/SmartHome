@@ -1,4 +1,4 @@
-import { actionTypeTraitRepository } from '../dal/action.type.traits.repository';
+import { capabilityTraitRepository } from '../dal/action.type.traits.repository';
 import { googleTraitsRepository } from '../dal/google.action.traits.repository';
 
 export interface GoogleActionTraitView {
@@ -8,15 +8,15 @@ export interface GoogleActionTraitView {
 }
 
 class GoogleActionsTraitsService {
-  async GetActionDefinitionTraits(actionId: number): Promise<GoogleActionTraitView[]> {
-    const [traits, actionTraits] = await Promise.all([
+  async GetActionDefinitionTraits(capabilityId: number): Promise<GoogleActionTraitView[]> {
+    const [traits, capabilityTraits] = await Promise.all([
       googleTraitsRepository.getAll(),
-      actionTypeTraitRepository.GetByActionId(actionId),
+      capabilityTraitRepository.GetByCapabilityId(capabilityId),
     ]);
-    return actionTraits.map((actionTrait) => {
-      const traitDef = traits.find((t) => t.id === actionTrait.google_trait_id);
+    return capabilityTraits.map((capabilityTrait) => {
+      const traitDef = traits.find((t) => t.id === capabilityTrait.google_trait_id);
       return {
-        id: actionTrait.id,
+        id: capabilityTrait.id,
         name: traitDef?.name ?? '',
         value: traitDef?.value ?? '',
       };

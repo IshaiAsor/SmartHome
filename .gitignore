@@ -68,3 +68,6 @@ google-homegraph-key.json
 
 # Design previews (uploaded to claude.ai/design, not source)
 backoffice/_design-previews/
+
+# device-sim persisted state (NVS analog, when statePath points into the repo)
+tools/device-sim/.sim-state/

@@ -1,11 +1,11 @@
 import db from '../config/db';
-import { ActionTypeTrait } from '@prisma/client';
+import { DeviceCapabilityTrait } from '@prisma/client';
 
-export type ActionTypeTraitEntity = ActionTypeTrait;
+export type ActionTypeTraitEntity = DeviceCapabilityTrait;
 
 class ActionTypeTraitRepository {
-  async GetByActionId(actionId: number): Promise<ActionTypeTraitEntity[]> {
-    return db.actionTypeTrait.findMany({ where: { device_action_type_id: actionId } });
+  async GetByActionId(capabilityId: number): Promise<ActionTypeTraitEntity[]> {
+    return db.deviceCapabilityTrait.findMany({ where: { capability_id: capabilityId } });
   }
 }
 

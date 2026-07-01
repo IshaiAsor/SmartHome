@@ -95,13 +95,22 @@ export class RuleEditorDialogComponent implements OnInit {
       name: [rule?.name ?? '', Validators.required],
       condition_operator: [rule?.condition_operator ?? 'AND'],
       cooldown_seconds: [rule?.cooldown_seconds ?? 60, [Validators.required, Validators.min(0)]],
+      is_emergency: [rule?.is_emergency ?? false],
       conditions: this.fb.array([]),
       actions: this.fb.array([]),
     });
 
     if (rule) {
       for (const c of rule.conditions) {
-        this.addCondition(c.condition_type as 'device_state' | 'threshold' | 'schedule' | 'device_status', c.parameters as ConditionPrefill);
+        this.addCondition(c.condition_type as 'device_state' | 'threshold' | 'schedule' | 'device_status', {
+          days: c.schedule_days ?? [],
+          time: c.schedule_time ?? undefined,
+          user_device_id: c.user_device_id ?? undefined,
+          value: c.threshold_value ?? c.status_value ?? undefined,
+          status: c.status_value ?? undefined,
+          user_device_action_id: c.user_device_action_id ?? undefined,
+          operator: c.operator ?? undefined,
+        });
       }
       for (const a of rule.actions) {
         this.addAction(a);
@@ -217,18 +226,21 @@ export class RuleEditorDialogComponent implements OnInit {
       name: value.name,
       condition_operator: value.condition_operator,
       cooldown_seconds: value.cooldown_seconds,
+      is_emergency: value.is_emergency,
       conditions: value.conditions.map((c: ConditionFormValue) => {
         if (c.condition_type === 'schedule') {
           const days = (c.days as boolean[]).map((checked, i) => checked ? i : -1).filter(i => i >= 0);
-          return { condition_type: 'schedule', parameters: { time: c.time, days } };
+          return { condition_type: 'schedule', schedule_time: c.time, schedule_days: days };
         }
         if (c.condition_type === 'device_state') {
-          return { condition_type: 'device_state', parameters: { user_device_id: c.device_id, value: c.value } };
+          return { condition_type: 'device_state', user_device_id: c.device_id, status_value: String(c.value) };
         }
         // threshold
         return {
-          condition_type: c.condition_type,
-          parameters: { user_device_action_id: c.user_device_action_id, operator: c.operator, value: String(c.value) },
+          condition_type: 'threshold',
+          user_device_action_id: c.user_device_action_id,
+          operator: c.operator,
+          threshold_value: String(c.value),
         };
       }),
       actions: value.actions.map((a: ActionFormValue) => ({

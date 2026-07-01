@@ -1,6 +1,6 @@
 import { Component, DestroyRef, HostListener, inject, OnInit } from '@angular/core';
 import { DeviceActionView, DeviceMgmtService } from 'src/app/services/device.mgmt.service';
-import { hasTrait, COLOR_OPTIONS, iconForAction } from 'src/app/utils/device-type.utils';
+import { hasTrait, COLOR_OPTIONS, iconForAction, activeTraitValue, traitIconName, controllableTraits } from 'src/app/utils/device-type.utils';
 import { DeviceSocketService } from 'src/app/services/device.socket.service';
 import { ActionGroupView, DashboardItem, UserActionsService } from 'src/app/services/user.actions.service';
 import { UserRulesService } from 'src/app/services/user.rules.service';
@@ -14,9 +14,8 @@ import { GroupTileComponent } from '../group-tile/group-tile.component';
 import { CameraDisplayComponent } from '../camera-display/camera-display.component';
 import { GroupBottomSheetComponent } from '../group-bottom-sheet/group-bottom-sheet.component';
 import { CdkDragDrop, CdkDragMove, moveItemInArray } from '@angular/cdk/drag-drop';
-import { forkJoin } from 'rxjs';
 import { HttpClient } from '@angular/common/http';
-import { environment } from 'src/environments/environment';
+import { apiV2Url } from 'src/app/services/api.config';
 
 // Dial geometry constants
 const CX = 60, CY = 52, R = 36;
@@ -162,7 +161,7 @@ export class UserDashboard implements OnInit {
       this.activeRules = rules.filter(r => r.enabled).length;
     });
 
-    this.http.get<{ id: number }[]>(`${environment.apiUrl}/api/emergency/events?limit=50`)
+    this.http.get<{ id: number }[]>(`${apiV2Url()}/api/rules/events?limit=50&emergency=true`)
       .subscribe({ next: events => { this.emergencyAlerts = events.length; } });
   }
 
@@ -198,6 +197,7 @@ export class UserDashboard implements OnInit {
         kind: 'group',
         sortOrder: Math.min(...members.map(m => m.sortOrder ?? 0)),
         group: {
+          id: members[0].groupId!,
           name,
           previewTypes: members.slice(0, 4).map(m => m.googleType?.value ?? null),
           actions: members,
@@ -296,7 +296,7 @@ export class UserDashboard implements OnInit {
     const targetIdx = this.cardIndexAtPoint(this.lastPointerPos.x, this.lastPointerPos.y);
     this.groupDropTargetIndex = null;
 
-    if (targetIdx !== null) {
+    if (targetIdx !== null && this.items[event.previousIndex].kind === 'action') {
       this.handleGroupDrop(this.items[event.previousIndex], this.items[targetIdx]);
     } else {
       // cdkDropListSortingDisabled → currentIndex === previousIndex, so compute manually
@@ -308,6 +308,7 @@ export class UserDashboard implements OnInit {
 
   private handleGroupDrop(draggedItem: DashboardItem, targetItem: DashboardItem) {
     let groupName: string;
+    const actionIds = [draggedItem.action!.id];
 
     if (targetItem.kind === 'group') {
       groupName = targetItem.group!.name;
@@ -318,14 +319,10 @@ export class UserDashboard implements OnInit {
       groupName = 'Group';
       let n = 2;
       while (existingNames.has(groupName)) groupName = `Group ${n++}`;
+      actionIds.push(targetItem.action!.id);
     }
 
-    const calls = [this.userActionsService.setActionGroup(draggedItem.action!.id, groupName)];
-    if (targetItem.kind === 'action') {
-      calls.push(this.userActionsService.setActionGroup(targetItem.action!.id, groupName));
-    }
-
-    forkJoin(calls).subscribe(() => {
+    this.userActionsService.assignActionsToGroup(groupName, actionIds).subscribe(() => {
       this.userActionsService.getUserActions().subscribe(actions => {
         this.items = this.buildItems(actions);
         this.saveOrder();
@@ -361,7 +358,7 @@ export class UserDashboard implements OnInit {
   // ── Group actions ────────────────────────────────────────────────
 
   openGroup(group: ActionGroupView) {
-    const ref = this.bottomSheet.open(GroupBottomSheetComponent, { data: { group } });
+    const ref = this.bottomSheet.open(GroupBottomSheetComponent, { data: { group }, panelClass: 'glass-bottom-sheet' });
     ref.afterDismissed().subscribe((needsReload: boolean) => {
       if (needsReload) this.reloadActions();
     });
@@ -382,24 +379,36 @@ export class UserDashboard implements OnInit {
         this.snackBar.open('A group with that name already exists', 'Close', { duration: 2500 });
         return;
       }
-      forkJoin(group.actions.map(a => this.userActionsService.setActionGroup(a.id, newName)))
-        .subscribe(() => {
+      this.userActionsService.renameGroup(group.id, newName).subscribe({
+        next: () => {
           this.snackBar.open('Group renamed', 'Close', { duration: 2000 });
-          this.reloadActions(); // rebuild items with new references so signal inputs re-fire
-        });
+          this.reloadActions();
+        },
+        error: () => this.snackBar.open('Failed to rename group', 'Close', { duration: 3000 }),
+      });
     });
   }
 
   ungroupAll(group: ActionGroupView) {
-    forkJoin(group.actions.map(a => this.userActionsService.setActionGroup(a.id, null)))
-      .subscribe(() => this.reloadActions());
+    this.userActionsService.deleteGroup(group.id).subscribe({
+      next: () => this.reloadActions(),
+      error: () => this.snackBar.open('Failed to ungroup', 'Close', { duration: 3000 }),
+    });
   }
 
   // ── Device type icon + trait helpers ─────────────────────────────
 
   iconForAction = iconForAction;
   hasTrait = hasTrait;
+  activeTraitValue = activeTraitValue;
+  traitIconName = traitIconName;
+  controllableTraits = controllableTraits;
   colorOptions = COLOR_OPTIONS;
+
+  setDefaultTrait(action: DeviceActionView, traitId: number) {
+    action.defaultTraitId = traitId;
+    this.userActionsService.setDefaultTrait(action.id, traitId).subscribe();
+  }
 
   // ── Action card actions ──────────────────────────────────────────
 

@@ -58,6 +58,12 @@ export class UsersRepository {
       }
     });
   }
+  async linkGoogleId(id: number, googleId: string, fullName: string, profilePictureUrl: string): Promise<UserEntity> {
+    return await db.user.update({
+      where: { id },
+      data: { google_id: googleId, full_name: fullName, profile_picture_url: profilePictureUrl },
+    });
+  }
 }
 
 export const usersRepository = new UsersRepository();

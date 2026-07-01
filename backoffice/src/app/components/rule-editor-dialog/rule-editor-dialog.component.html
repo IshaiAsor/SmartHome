@@ -9,6 +9,9 @@
       <input matInput formControlName="name" placeholder="e.g. Cool down when hot">
     </mat-form-field>
 
+    <!-- Emergency flag (unified rule) -->
+    <mat-checkbox formControlName="is_emergency" class="emergency-toggle">Emergency rule</mat-checkbox>
+
     <!-- Condition operator -->
     <div class="section-label">Match</div>
     <div class="operator-toggle">
@@ -217,11 +220,9 @@
       }
     </div>
 
-    @if (actionsArray.length === 0) {
-      <button mat-stroked-button type="button" (click)="addAction()" class="add-btn">
-        <mat-icon>add</mat-icon> Add Action
-      </button>
-    }
+    <button mat-stroked-button type="button" (click)="addAction()" class="add-btn">
+      <mat-icon>add</mat-icon> Add Action
+    </button>
 
     <!-- Cooldown -->
     <div class="cooldown-row">
@@ -229,7 +230,6 @@
       <mat-form-field appearance="outline" class="cooldown-field">
         <input matInput type="number" formControlName="cooldown_seconds" min="0">
         <span matSuffix>sec</span>
-        <mat-hint>Min. seconds between firings</mat-hint>
       </mat-form-field>
     </div>
 

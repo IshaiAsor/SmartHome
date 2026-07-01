@@ -2,22 +2,30 @@ import { Injectable, inject, signal } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
 import { tap } from 'rxjs/operators';
 import { Router } from '@angular/router';
-import { environment } from 'src/environments/environment';
 import { Observable } from 'rxjs';
 import { jwtDecode } from 'jwt-decode';
+import { apiV2Url } from './api.config';
 
 export interface User {
+  id?: number;
   username: string;
   email?: string;
   role?: string;
-  user_type?: string;
+  user_type?: string | number;
   profileImage?: string;
+}
+
+interface AuthResponse {
+  token: string;
+  refreshToken: string;
 }
 
 @Injectable({ providedIn: 'root' })
 export class AuthService {
   private tokenKey = 'access_token';
-  private apiUrl = `${environment.apiUrl}`;
+  private refreshTokenKey = 'refresh_token';
+  // Migrated to the new `api` service (F2): /api/auth/* + /api/users/me.
+  private apiUrl = apiV2Url();
   private http = inject(HttpClient);
   private router = inject(Router);
 
@@ -40,43 +48,45 @@ export class AuthService {
   }
 
   getUserInfo(): Observable<User> {
-    return this.http.get<User>(`${this.apiUrl}/api/auth/user-info`);
+    return this.http.get<User>(`${this.apiUrl}/api/users/me`);
   }
 
   loginWithUserPass(username: string, password: string) {
-    return this.http.post<string>(`${this.apiUrl}/api/auth/login`, { username, password }).pipe(
-      tap((token) => {
-        localStorage.setItem(this.tokenKey, token);
-        const decodedUser: User = jwtDecode(token);
-        this.currentUser.set(decodedUser);
-        console.log(decodedUser);
+    return this.http.post<AuthResponse>(`${this.apiUrl}/api/auth/login`, { username, password }).pipe(
+      tap((response) => {
+        this.storeTokens(response);
       }),
     );
   }
 
   loginWithGoogle(code: string, termsAccepted = false) {
-    return this.http.post<string>(`${this.apiUrl}/api/auth/google`, { code, termsAccepted }).pipe(
-      tap((token) => {
-        localStorage.setItem(this.tokenKey, token);
-        const decodedUser: User = jwtDecode(token);
-        this.currentUser.set(decodedUser);
-        console.log(decodedUser);
+    return this.http.post<AuthResponse>(`${this.apiUrl}/api/auth/google`, { code, termsAccepted }).pipe(
+      tap((response) => {
+        this.storeTokens(response);
       }),
     );
   }
 
   register(username: string, email: string, password: string, termsAccepted: boolean) {
-    return this.http.post<string>(`${this.apiUrl}/api/auth/register`, { username, email, password, termsAccepted }).pipe(
-      tap((token) => {
-        localStorage.setItem(this.tokenKey, token);
-        const decodedUser: User = jwtDecode(token);
-        this.currentUser.set(decodedUser);
+    return this.http.post<AuthResponse>(`${this.apiUrl}/api/auth/register`, { username, email, password, termsAccepted }).pipe(
+      tap((response) => {
+        this.storeTokens(response);
+      }),
+    );
+  }
+
+  refreshAccessToken(): Observable<AuthResponse> {
+    const refreshToken = localStorage.getItem(this.refreshTokenKey);
+    return this.http.post<AuthResponse>(`${this.apiUrl}/api/auth/refresh-token`, { refreshToken }).pipe(
+      tap((response) => {
+        this.storeTokens(response);
       }),
     );
   }
 
   logout() {
     localStorage.removeItem(this.tokenKey);
+    localStorage.removeItem(this.refreshTokenKey);
     this.currentUser.set(null);
     this.router.navigate(['/login']);
   }
@@ -91,6 +101,13 @@ export class AuthService {
       return false;
     }
     return !this.isTokenExpired(token);
+  }
+
+  private storeTokens(response: AuthResponse): void {
+    localStorage.setItem(this.tokenKey, response.token);
+    localStorage.setItem(this.refreshTokenKey, response.refreshToken);
+    const decodedUser: User = jwtDecode(response.token);
+    this.currentUser.set(decodedUser);
   }
 
   private isTokenExpired(token: string): boolean {

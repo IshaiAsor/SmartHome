@@ -1,11 +1,11 @@
-import { db, ActionTypeTrait } from '@lattice/prisma-client';
+import { db, DeviceCapabilityTrait } from '@lattice/prisma-client';
 
-export type ActionTypeTraitEntity = ActionTypeTrait;
+export type CapabilityTraitEntity = DeviceCapabilityTrait;
 
-class ActionTypeTraitRepository {
-  async GetByActionId(actionId: number): Promise<ActionTypeTraitEntity[]> {
-    return db.actionTypeTrait.findMany({ where: { device_action_type_id: actionId } });
+class CapabilityTraitRepository {
+  async GetByCapabilityId(capabilityId: number): Promise<CapabilityTraitEntity[]> {
+    return db.deviceCapabilityTrait.findMany({ where: { capability_id: capabilityId } });
   }
 }
 
-export const actionTypeTraitRepository = new ActionTypeTraitRepository();
+export const capabilityTraitRepository = new CapabilityTraitRepository();

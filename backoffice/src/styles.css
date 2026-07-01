@@ -150,6 +150,22 @@ app-root {
   border-radius: 16px !important;
 }
 
+/* ── Glass bottom sheet ───────────────────────────────────────────────── */
+.glass-bottom-sheet .mat-bottom-sheet-container {
+  background: var(--card-bg) !important;
+  backdrop-filter: blur(24px) !important;
+  -webkit-backdrop-filter: blur(24px) !important;
+  border: 1px solid var(--border) !important;
+  border-bottom: none !important;
+  border-radius: 20px 20px 0 0 !important;
+  box-shadow: var(--card-shadow) !important;
+  color: var(--text) !important;
+  padding: 0 !important;
+}
+
+/* dial % tspan in dark mode */
+.dial-pct-unit { fill: var(--text-muted); }
+
 /* ── Camera fullscreen ────────────────────────────────────────────────── */
 .camera-dialog-panel .mat-mdc-dialog-container,
 .camera-dialog-panel .mdc-dialog__container,

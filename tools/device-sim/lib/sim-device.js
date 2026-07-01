@@ -1,0 +1,600 @@
+'use strict';
+// SimDevice — an importable software ESP device. Pure HTTP + MQTT (+ camera WS/HTTP), mirroring
+// real firmware as closely as possible so it can both run as a CLI and be driven from automated
+// tests. See ../PARITY.md for the firmware↔sim feature matrix.
+//
+//   const { SimDevice } = require('./lib/sim-device');
+//   const dev = new SimDevice({ deviceType: 'ESP32S3_CAM', log: console.log });
+//   await dev.start();
+//   const cmd = await dev.waitFor('command', (c) => c.action === 'outlet', 3000);
+
+const EventEmitter = require('events');
+const os = require('os');
+const path = require('path');
+const fs = require('fs');
+const mqtt = require('mqtt');
+const { validate, normalize } = require('./command-models');
+const { makeFrame } = require('./jpeg');
+
+const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+// Tolerate a scheme-less base URL (e.g. API_URL=localhost:3010) — fetch() requires a scheme.
+const withScheme = (u) => (u && !/^https?:\/\//i.test(u) ? `http://${u}` : u);
+const isCamera = (impl) => /camera|stream|picture/i.test(impl || '');
+const isHttpCamera = (impl) => /Http/.test(impl || ''); // TakePictureHttpAction / LiveStreamHttpAction
+
+// Strictly-greater semver compare ("v2.0.165"), matching firmware OtaService::isNewerVersion.
+function isNewer(a, b) {
+  const p = (s) => String(s).replace(/^[vV]/, '').split('.').map((n) => parseInt(n, 10) || 0);
+  const [aM, aMi, aP] = p(a);
+  const [bM, bMi, bP] = p(b);
+  if (aM !== bM) return aM > bM;
+  if (aMi !== bMi) return aMi > bMi;
+  return aP > bP;
+}
+
+// Plausible per-implementation_type readings with a slow sine drift so threshold rules can cross.
+const BANDS = {
+  TemperatureAction:    [18, 30],
+  AirTemperatureAction: [18, 32],
+  HumidityAction:       [35, 75],
+  WaterLevelAction:     [0, 100],
+  PhLevelAction:        [5.5, 7.5],
+  TdsLevelAction:       [400, 1200],
+  CO2LevelAction:       [400, 1500],
+};
+function reading(impl, seed, t) {
+  const [lo, hi] = BANDS[impl] || [0, 100];
+  const phase = Math.sin(t / 6 + seed);
+  const noise = (Math.random() - 0.5) * (hi - lo) * 0.02;
+  return Math.round((lo + ((phase + 1) / 2) * (hi - lo) + noise) * 10) / 10;
+}
+
+function decodeJwtExp(token) {
+  try {
+    const payload = JSON.parse(Buffer.from(String(token).split('.')[1], 'base64url').toString('utf8'));
+    return typeof payload.exp === 'number' ? payload.exp : null;
+  } catch {
+    return null;
+  }
+}
+
+// WebSocket factory: prefer the `ws` package (consistent Node event API), fall back to a global
+// WebSocket (Node >=22). Normalises the two event APIs.
+function makeWs(url, { onOpen, onClose, onError }) {
+  let Impl;
+  try { Impl = require('ws'); } catch { Impl = global.WebSocket; }
+  if (!Impl) throw new Error("no WebSocket available — install 'ws' or use Node >=22");
+  const ws = new Impl(url);
+  if (typeof ws.on === 'function') {
+    ws.on('open', onOpen);
+    ws.on('close', onClose);
+    ws.on('error', onError || (() => {}));
+  } else {
+    try { ws.binaryType = 'arraybuffer'; } catch {}
+    ws.addEventListener('open', onOpen);
+    ws.addEventListener('close', onClose);
+    ws.addEventListener('error', onError || (() => {}));
+  }
+  return ws;
+}
+
+const DEFAULTS = {
+  apiUrl: 'http://localhost:3100',
+  gatewayUrl: 'http://localhost:3004',
+  mqttHost: '127.0.0.1',
+  mqttPort: 1883,
+  user: 'admin',
+  pass: 'admin',
+  deviceType: 'ESP32S3_MINI',
+  mac: 'SIM-AA:BB:CC:DD:EE:01',
+  telemetryMs: 5000,
+  cameraMs: 2000,
+  configRefreshMs: 60000, // 0 disables the periodic re-pull (real firmware only pulls at boot)
+  activateAll: true,
+  autoTelemetry: true,   // run telemetry + config-refresh loops in start()
+  camera: true,          // stream camera frames for activated camera capabilities
+  persist: true,         // NVS analog: persist command state to disk
+  statePath: null,       // defaults to a per-MAC file under os.tmpdir()
+  restartOnLoss: false,  // mimic firmware ESP.restart on connection loss (vs auto-reconnect)
+  otaFail: false,        // simulate a failed OTA (ack failed, no reboot)
+  rebootMs: 1500,        // simulated reboot downtime
+  refreshLeadMs: 450000, // refresh the device JWT this long before exp (firmware JWT_REFRESH_POLICY)
+  log: () => {},
+};
+
+class SimDevice extends EventEmitter {
+  constructor(opts = {}) {
+    super();
+    this.opts = { ...DEFAULTS, ...opts };
+    this.opts.apiUrl = withScheme(this.opts.apiUrl);
+    this.opts.gatewayUrl = withScheme(this.opts.gatewayUrl);
+    this._log = this.opts.log || (() => {});
+    // identity / connection (reset by (re)provision)
+    this.appToken = null;
+    this.userId = null;
+    this.catalogCaps = null;
+    this.version = null;
+    this.deviceId = null;
+    this.mqttToken = null;
+    this.refreshToken = null;
+    this.refreshUrl = null;
+    this.deviceConfigUrl = null;
+    this.wsStreamUrl = null;
+    this.cameraHttpUrl = null;
+    this.client = null;
+    this.actions = [];
+    // internal bookkeeping
+    this._lastPub = new Map();
+    this._lastState = new Map();
+    this._durationTimers = new Map();
+    this._cameraConns = new Map();
+    this._timers = [];
+    this._refreshTimer = null;
+    this._configTimer = null;
+    this._t = 0;
+    this._intentionalClose = false;
+    this._stateFile = this.opts.statePath ||
+      path.join(os.tmpdir(), 'lattice-sim-state', `${String(this.opts.mac).replace(/[^\w.-]/g, '_')}.json`);
+  }
+
+  // ── lifecycle ──────────────────────────────────────────────────────────
+  async start() {
+    await this.login();
+    this._log(`✔ logged in as ${this.opts.user}`);
+    await this.loadCatalog();
+    this._log(`✔ catalog ${this.opts.deviceType} ${this.version} — ${this.catalogCaps.length} capabilities`);
+    await this.provision();
+    this._log(`✔ provisioned — deviceId ${this.deviceId}`);
+    if (this.opts.activateAll) {
+      const { activated, skipped } = await this.activateAll();
+      this._log(`✔ activated ${activated} capabilit${activated === 1 ? 'y' : 'ies'} via api (skipped ${skipped} already configured)`);
+    }
+    this._loadStateFile();
+    const { tel, cmd, cam } = await this.pullConfig();
+    this._log(`✔ pulled config — ${this.actions.length} action(s): ${tel} telemetry, ${cmd} command, ${cam} camera`);
+    if (this.actions.length === 0) {
+      this._log(`  (nothing activated yet — activate capabilities in the device-config UI; re-pulls every ${this.opts.configRefreshMs}ms)`);
+    }
+    await this.connect();
+    this._scheduleRefresh();
+    if (this.opts.autoTelemetry) this._startLoops();
+    if (this.opts.camera) this._startCamera();
+    this._log('▶ running — honours per-type commands, duration auto-off, refresh, camera, restart/soft-reset/hard-reset/OTA');
+    return this;
+  }
+
+  async login() {
+    const r = await this._http('POST', `${this.opts.apiUrl}/api/auth/login`, null, {
+      username: this.opts.user, password: this.opts.pass,
+    });
+    // /auth/login returns { token, refreshToken }; older builds returned a bare JWT string.
+    this.appToken = r && typeof r === 'object' && r.token ? r.token : r;
+  }
+
+  async loadCatalog() {
+    const devices = await this._http('GET', `${this.opts.apiUrl}/api/admin/catalog/devices`, this.appToken);
+    const dev = devices
+      .filter((d) => d.type === this.opts.deviceType)
+      .sort((a, b) => (isNewer(a.version, b.version) ? -1 : 1))[0];
+    if (!dev) throw new Error(`no catalog device for type ${this.opts.deviceType} — seed the catalog first`);
+    this.version = dev.version;
+    this.catalogCaps = await this._http('GET', `${this.opts.apiUrl}/api/admin/catalog/devices/${dev.id}/capabilities`, this.appToken);
+  }
+
+  async provision() {
+    const { provisioningToken, userId } = await this._http('GET', `${this.opts.gatewayUrl}/api/provisioning/provision-token`, this.appToken);
+    this.userId = userId;
+    const prov = await this._http('POST', `${this.opts.gatewayUrl}/api/provisioning/provision`, provisioningToken, {
+      macAddress: this.opts.mac,
+      deviceType: this.opts.deviceType,
+      version: this.version,
+      capabilities: this.catalogCaps.map((c) => ({
+        capability_key: c.capability_key, label: c.label,
+        implementation_type: c.implementation_type, mqtt_action_type: c.mqtt_action_type,
+        mqtt_action_name: c.mqtt_action_name,
+      })),
+    });
+    this.deviceId = prov.deviceId;
+    this.mqttToken = prov.mqttToken;
+    this.refreshToken = prov.refreshToken;
+    this.refreshUrl = prov.refreshTokenCallbackUrl;
+    this.deviceConfigUrl = prov.deviceConfigUrl;
+    this.wsStreamUrl = prov.wsStreamUrl;
+    this.cameraHttpUrl = prov.cameraHttpUrl;
+    return { deviceId: this.deviceId, mqttToken: this.mqttToken };
+  }
+
+  // Activate every catalog capability through the real api (the device-config page's own call).
+  async activateAll() {
+    const view = await this._http('GET', `${this.opts.apiUrl}/api/devices/${this.deviceId}/capabilities`, this.appToken);
+    let activated = 0;
+    for (const cap of view) {
+      if (cap.instances.length > 0) continue; // idempotent across runs
+      await this._http('POST', `${this.opts.apiUrl}/api/devices/${this.deviceId}/actions`, this.appToken, {
+        capability_id: cap.id,
+        telemetry_interval_ms: cap.mqtt_action_type === 'telemetry' ? (cap.min_telemetry_interval_ms ?? this.opts.telemetryMs) : null,
+        pins: cap.configurable_pins.map((p, i) => ({ capability_pin_id: p.id, pin_number: 10 + i })),
+      });
+      activated++;
+    }
+    return { activated, skipped: view.length - activated };
+  }
+
+  // PULL configuration — only the device's own active actions (firmware loadFromServer).
+  async pullConfig() {
+    const cfg = await this._http('GET', `${this.deviceConfigUrl}?deviceId=${this.deviceId}&version=${this.version}`, this.mqttToken);
+    this.actions = cfg.actions || [];
+    for (const a of this.actions) {
+      if (a.pins && a.pins.length) {
+        this._log(`[Config] ${a.mqtt_action_name} (${a.implementation_type}) pins: ${a.pins.map((p) => `GPIO${p.pinNumber}/${p.pinMode}`).join(', ')}`);
+      }
+    }
+    const tel = this.actions.filter((a) => a.mqtt_action_type === 'telemetry' && !isCamera(a.implementation_type)).length;
+    const cmd = this.actions.filter((a) => a.mqtt_action_type === 'command').length;
+    const cam = this.actions.filter((a) => isCamera(a.implementation_type)).length;
+    this.emit('config', { actions: this.actions, tel, cmd, cam });
+    return { tel, cmd, cam };
+  }
+
+  connect() {
+    return new Promise((resolve) => {
+      let resolved = false;
+      this._intentionalClose = false;
+      this.client = mqtt.connect(`mqtt://${this.opts.mqttHost}:${this.opts.mqttPort}`, {
+        username: String(this.userId), clientId: String(this.deviceId), password: this.mqttToken,
+        reconnectPeriod: this.opts.restartOnLoss ? 0 : 2000,
+        will: { topic: this._statusTopic(), payload: 'offline', retain: true, qos: 0 },
+      });
+      this.client.on('error', (e) => this._emitErr(e));
+      this.client.on('message', (t, p) => this._onMessage(t, p));
+      this.client.on('close', () => {
+        if (this._intentionalClose) return;
+        this.emit('offline', {});
+        if (this.opts.restartOnLoss) {
+          this._log('⚠ connection lost — restarting (restartOnLoss)');
+          this.reboot().catch((e) => this._emitErr(e));
+        }
+      });
+      this.client.on('connect', () => {
+        this._log(`✔ MQTT connected (v${this.version})`);
+        this.client.publish(this._statusTopic(), 'online', { retain: true });
+        this.client.subscribe(`${this._base()}/+/command/#`);
+        this.client.subscribe(`ota/updates/${this.opts.deviceType}`);
+        // Boot/reboot state restore: republish last command states as unsolicited acks.
+        for (const [action, value] of this._lastState) {
+          this._publishAck(action, { status: 'ok', value, unsolicited: true });
+        }
+        this.emit('connect', { version: this.version });
+        if (!resolved) { resolved = true; resolve(); }
+      });
+    });
+  }
+
+  // ── MQTT message handling ────────────────────────────────────────────────
+  async _onMessage(topic, payload) {
+    const msg = payload.toString();
+
+    if (topic.startsWith('ota/updates/')) {
+      await this._handleOta(msg);
+      return;
+    }
+
+    const parts = topic.split('/');
+    const ci = parts.indexOf('command');
+    if (ci === -1) return;
+    const action = parts.slice(ci + 1).join('/');
+
+    // Control commands — firmware reboots and does NOT ack these.
+    if (action === 'restart') {
+      this._log('↻ restart command — rebooting (creds kept)');
+      await this.reboot();
+      return;
+    }
+    if (action === 'soft-reset' || action === 'reprovision') {
+      this._log('↻ soft-reset command — clearing creds + re-provisioning');
+      await this.reboot({ reprovision: true });
+      return;
+    }
+    if (action === 'hard-reset') {
+      this._log('⚑ hard-reset command — factory wipe; going offline');
+      this.emit('hard-reset', {});
+      await this.stop();
+      return;
+    }
+
+    // Normal action command: { value, duration, commandId }.
+    let cmd;
+    try { cmd = JSON.parse(msg); } catch { cmd = { value: msg }; }
+    const impl = (this.actions.find((a) => a.mqtt_action_name === action) || {}).implementation_type;
+    const ok = validate(impl, cmd.value);
+    const value = ok ? normalize(cmd.value) : cmd.value;
+    const ack = { status: ok ? 'ok' : 'error', value };
+    if (cmd.commandId) ack.commandId = cmd.commandId;
+    this._log(`⇐ command ${action} = ${JSON.stringify(cmd.value)}${ok ? '' : ' (INVALID)'}${cmd.commandId ? ` (cmd ${cmd.commandId})` : ''} → ack ${ack.status}`);
+    this._publishAck(action, ack);
+    this.emit('command', { action, value: cmd.value, commandId: cmd.commandId, duration: cmd.duration, valid: ok, impl });
+    if (!ok) return; // firmware does not change state on an invalid payload
+
+    this._lastState.set(action, value);
+    this._saveStateFile();
+
+    // Duration auto-off (seconds; "*" = none), mirroring BaseCommandAction::loop.
+    clearTimeout(this._durationTimers.get(action));
+    this._durationTimers.delete(action);
+    const dur = cmd.duration;
+    if (dur !== undefined && dur !== '*' && Number(dur) > 0) {
+      this._log(`  duration ${dur}s — will auto-off`);
+      this._durationTimers.set(action, setTimeout(() => {
+        this._durationTimers.delete(action);
+        this._lastState.set(action, 'off');
+        this._saveStateFile();
+        if (this.client && this.client.connected) {
+          this._publishAck(action, { status: 'ok', value: 'off', unsolicited: true });
+          this._log(`⏲ ${action} duration elapsed → auto-off (unsolicited ack)`);
+        }
+      }, Number(dur) * 1000));
+    }
+  }
+
+  async _handleOta(msg) {
+    let p;
+    try { p = JSON.parse(msg); } catch { return; }
+    if (!p.version || !p.url) return;
+    if (!isNewer(p.version, this.version)) {
+      this._log(`⊘ OTA ${p.version} ignored (current ${this.version}, not newer)`);
+      this._publishAck('ota', { status: 'error', value: 'rejected:not-newer' });
+      this.emit('ota', { from: this.version, to: p.version, accepted: false, reason: 'not-newer' });
+      return;
+    }
+    if (this.opts.otaFail) {
+      this._log(`⇩ OTA ${p.version} — simulating FAILED update`);
+      this._publishAck('ota', { status: 'error', value: 'failed:simulated' });
+      this.emit('ota', { from: this.version, to: p.version, accepted: false, reason: 'failed' });
+      return;
+    }
+    this._log(`⇩ OTA ${this.version} → ${p.version} from ${p.url} — "flashing"...`);
+    this._publishAck('ota', { status: 'ok', value: `starting:${p.version}` });
+    this.emit('ota', { from: this.version, to: p.version, accepted: true });
+    this.version = p.version;       // adopt new firmware version
+    await this.reboot();            // reconnect on the NEW version topic → current_firmware_version
+  }
+
+  // ── simulated reboot ─────────────────────────────────────────────────────
+  async reboot({ reprovision = false } = {}) {
+    this._clearDurationTimers();
+    this._stopCamera();
+    this._intentionalClose = true;
+    try { this.client && this.client.publish(this._statusTopic(), 'offline', { retain: true }); } catch {}
+    if (this.client) await new Promise((r) => this.client.end(true, {}, r));
+    await sleep(this.opts.rebootMs);
+    if (reprovision) { await this.provision(); this._log(`  re-provisioned — deviceId ${this.deviceId}`); }
+    await this.connect();
+    const { tel, cmd } = await this.pullConfig();
+    this._scheduleRefresh();
+    if (this.opts.camera) this._startCamera();
+    this.emit('reboot', { reprovision });
+    this._log(`✔ back online — ${this.actions.length} action(s): ${tel} telemetry, ${cmd} command`);
+  }
+
+  // ── telemetry + config-refresh loops ─────────────────────────────────────
+  _startLoops() {
+    this._timers.push(setInterval(() => {
+      this._t += 1;
+      if (!this.client || !this.client.connected) return;
+      const now = Date.now();
+      for (const a of this.actions) {
+        if (a.mqtt_action_type !== 'telemetry' || isCamera(a.implementation_type)) continue;
+        const interval = a.telemetry_interval_ms && a.telemetry_interval_ms > 0 ? a.telemetry_interval_ms : this.opts.telemetryMs;
+        if (now - (this._lastPub.get(a.mqtt_action_name) ?? 0) < interval) continue;
+        this._lastPub.set(a.mqtt_action_name, now);
+        this.publishTelemetry(a.mqtt_action_name, reading(a.implementation_type, a.mqtt_action_name.length, this._t));
+      }
+    }, 1000));
+
+    // Periodic config re-pull is a sim convenience (real firmware only pulls at boot). It's a
+    // no-op unless configRefreshMs > 0, and it never overlaps: it reschedules itself only after
+    // the previous pull settles, so a slow/unreachable gateway can't pile up requests.
+    if (this.opts.configRefreshMs > 0) {
+      const scheduleRefresh = () => {
+        this._configTimer = setTimeout(async () => {
+          if (this.client && this.client.connected) {
+            try {
+              const { tel, cmd, cam } = await this.pullConfig();
+              this._log(`↻ config refreshed — ${this.actions.length} action(s): ${tel} telemetry, ${cmd} command, ${cam} camera`);
+              if (this.opts.camera) this._startCamera();
+            } catch (e) {
+              this._emitErr(e);
+            }
+          }
+          scheduleRefresh();
+        }, this.opts.configRefreshMs);
+      };
+      scheduleRefresh();
+    }
+  }
+
+  publishTelemetry(name, value) {
+    if (this.client) this.client.publish(`${this._base()}/${this.version}/telemetry/${name}`, String(value));
+    this.emit('telemetry', { action: name, value });
+  }
+
+  publishStatus(status) {
+    if (this.client) this.client.publish(this._statusTopic(), status, { retain: true });
+  }
+
+  // ── camera (WS + HTTP) ───────────────────────────────────────────────────
+  _startCamera() {
+    const camActions = this.actions.filter((a) => isCamera(a.implementation_type));
+    const wanted = new Set(camActions.map((a) => (isHttpCamera(a.implementation_type) ? `http:${a.mqtt_action_name}` : a.mqtt_action_name)));
+    for (const [key, conn] of this._cameraConns) {
+      if (!wanted.has(key)) { try { conn.close(); } catch {} this._cameraConns.delete(key); }
+    }
+    for (const a of camActions) {
+      if (isHttpCamera(a.implementation_type)) {
+        const key = `http:${a.mqtt_action_name}`;
+        if (this._cameraConns.has(key)) continue;
+        const interval = a.telemetry_interval_ms && a.telemetry_interval_ms > 0 ? a.telemetry_interval_ms : this.opts.cameraMs;
+        const tmr = setInterval(() => this._sendHttpFrame(a.mqtt_action_name).catch((e) => this._emitErr(e)), interval);
+        this._cameraConns.set(key, { close: () => clearInterval(tmr) });
+      } else {
+        if (this._cameraConns.has(a.mqtt_action_name)) continue;
+        this._openStreamWs(a);
+      }
+    }
+  }
+
+  _openStreamWs(a) {
+    const isCapture = a.implementation_type === 'TakePictureAction';
+    const wsPath = isCapture ? '/ws/capture' : '/ws/stream';
+    const url = `${this.wsStreamUrl.replace(/^http/, 'ws')}${wsPath}?token=${encodeURIComponent(this.mqttToken)}&action=${encodeURIComponent(a.mqtt_action_name)}`;
+    const interval = a.telemetry_interval_ms && a.telemetry_interval_ms > 0 ? a.telemetry_interval_ms : this.opts.cameraMs;
+    let frameTmr = null;
+    const ws = makeWs(url, {
+      onOpen: () => {
+        this._log(`📷 ${a.mqtt_action_name} WS ${wsPath} open`);
+        frameTmr = setInterval(() => {
+          const frame = makeFrame();
+          try { ws.send(frame); this.emit('camera-frame', { action: a.mqtt_action_name, transport: 'ws', bytes: frame.length }); } catch {}
+        }, interval);
+      },
+      onClose: () => { if (frameTmr) clearInterval(frameTmr); },
+      onError: (e) => this._log(`📷 ${a.mqtt_action_name} WS error: ${(e && e.message) || e}`),
+    });
+    this._cameraConns.set(a.mqtt_action_name, { close: () => { if (frameTmr) clearInterval(frameTmr); try { ws.close(); } catch {} } });
+  }
+
+  async _sendHttpFrame(name) {
+    const frame = makeFrame();
+    await this._httpRaw(`${this.cameraHttpUrl}/api/camera/frame?action=${encodeURIComponent(name)}`, this.mqttToken, frame, 'image/jpeg');
+    this.emit('camera-frame', { action: name, transport: 'http', bytes: frame.length });
+  }
+
+  _stopCamera() {
+    for (const conn of this._cameraConns.values()) { try { conn.close(); } catch {} }
+    this._cameraConns.clear();
+  }
+
+  // ── refresh-token rotation ───────────────────────────────────────────────
+  _scheduleRefresh() {
+    if (this._refreshTimer) clearTimeout(this._refreshTimer);
+    const exp = decodeJwtExp(this.mqttToken);
+    if (!exp) return; // no exp claim → nothing to schedule
+    const delay = Math.max(exp * 1000 - Date.now() - this.opts.refreshLeadMs, 1000);
+    this._refreshTimer = setTimeout(() => this.refreshTokenNow().catch((e) => this._emitErr(e)), delay);
+  }
+
+  async refreshTokenNow() {
+    if (!this.refreshToken) return;
+    const url = this.refreshUrl || `${this.opts.gatewayUrl}/api/provisioning/refresh-token`;
+    const r = await this._http('POST', url, null, { refreshToken: this.refreshToken });
+    this.mqttToken = r.mqttToken;
+    this.refreshToken = r.refreshToken;
+    this.deviceConfigUrl = r.deviceConfigUrl || this.deviceConfigUrl;
+    this.wsStreamUrl = r.wsStreamUrl || this.wsStreamUrl;
+    this.cameraHttpUrl = r.cameraHttpUrl || this.cameraHttpUrl;
+    this._log('🔑 refreshed device token');
+    this.emit('refresh', {});
+    this._scheduleRefresh();
+  }
+
+  // ── shutdown ─────────────────────────────────────────────────────────────
+  async stop() {
+    this._intentionalClose = true;
+    for (const tm of this._timers) clearInterval(tm);
+    this._timers = [];
+    this._clearDurationTimers();
+    if (this._refreshTimer) { clearTimeout(this._refreshTimer); this._refreshTimer = null; }
+    if (this._configTimer) { clearTimeout(this._configTimer); this._configTimer = null; }
+    this._stopCamera();
+    try { this.client && this.client.publish(this._statusTopic(), 'offline', { retain: true }); } catch {}
+    if (this.client) await new Promise((r) => this.client.end(false, {}, r));
+    this.client = null;
+  }
+
+  async cleanup() {
+    await this.stop();
+    if (this.deviceId && this.appToken) {
+      await this._http('DELETE', `${this.opts.apiUrl}/api/devices/${this.deviceId}`, this.appToken).catch(() => {});
+    }
+  }
+
+  // ── test hook ────────────────────────────────────────────────────────────
+  // Resolves with the next `event` whose payload satisfies `predicate` (or the next event if no
+  // predicate), rejecting after `timeoutMs`.
+  waitFor(event, predicate, timeoutMs = 5000) {
+    return new Promise((resolve, reject) => {
+      const onEvt = (p) => { if (!predicate || predicate(p)) { cleanup(); resolve(p); } };
+      const timer = setTimeout(() => { cleanup(); reject(new Error(`waitFor('${event}') timed out after ${timeoutMs}ms`)); }, timeoutMs);
+      const cleanup = () => { clearTimeout(timer); this.off(event, onEvt); };
+      this.on(event, onEvt);
+    });
+  }
+
+  // ── internals ────────────────────────────────────────────────────────────
+  _base() { return `users/${this.userId}/devices/${this.deviceId}`; }
+  _statusTopic() { return `${this._base()}/${this.version}/status`; }
+
+  _publishAck(action, { status, value, commandId, unsolicited }) {
+    const body = { status, value };
+    if (commandId) body.commandId = commandId;
+    if (this.client) this.client.publish(`${this._base()}/${this.version}/ack/${action}`, JSON.stringify(body));
+    this.emit('ack', { action, status, value, commandId, unsolicited: !!unsolicited });
+  }
+
+  _clearDurationTimers() {
+    for (const tm of this._durationTimers.values()) clearTimeout(tm);
+    this._durationTimers.clear();
+  }
+
+  _loadStateFile() {
+    if (!this.opts.persist) return;
+    try {
+      const data = JSON.parse(fs.readFileSync(this._stateFile, 'utf8'));
+      for (const [k, v] of Object.entries(data)) this._lastState.set(k, v);
+      if (this._lastState.size) this._log(`[NVS] restored ${this._lastState.size} saved action state(s)`);
+    } catch { /* no saved state */ }
+  }
+
+  _saveStateFile() {
+    if (!this.opts.persist) return;
+    try {
+      fs.mkdirSync(path.dirname(this._stateFile), { recursive: true });
+      fs.writeFileSync(this._stateFile, JSON.stringify(Object.fromEntries(this._lastState)));
+    } catch { /* best effort */ }
+  }
+
+  _emitErr(e) {
+    if (this.listenerCount('error') > 0) this.emit('error', e);
+    else this._log(`✗ ${(e && e.message) || e}`);
+  }
+
+  async _http(method, url, token, body) {
+    let res;
+    try {
+      res = await fetch(url, {
+        method,
+        headers: {
+          ...(body ? { 'Content-Type': 'application/json' } : {}),
+          ...(token ? { Authorization: `Bearer ${token}` } : {}),
+        },
+        ...(body ? { body: JSON.stringify(body) } : {}),
+      });
+    } catch (e) {
+      throw new Error(`${method} ${url} → ${(e.cause && e.cause.code) || e.message} (is the service running?)`);
+    }
+    if (!res.ok) throw new Error(`${method} ${url} → ${res.status}: ${await res.text()}`);
+    const text = await res.text();
+    return text ? JSON.parse(text) : null;
+  }
+
+  async _httpRaw(url, token, buf, contentType) {
+    const res = await fetch(url, {
+      method: 'POST',
+      headers: { 'Content-Type': contentType, ...(token ? { Authorization: `Bearer ${token}` } : {}) },
+      body: buf,
+    });
+    if (!res.ok) throw new Error(`POST ${url} → ${res.status}: ${await res.text()}`);
+  }
+}
+
+module.exports = { SimDevice, isNewer, reading, BANDS };

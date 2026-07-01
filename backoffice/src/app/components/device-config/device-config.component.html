@@ -84,19 +84,19 @@
         </div>
       </div>
 
-      @if (loadingBlueprints) {
+      @if (loadingCapabilities) {
         <mat-progress-bar mode="indeterminate"></mat-progress-bar>
       }
 
-      @if (!loadingBlueprints && blueprints.length === 0) {
-        <div class="no-blueprints">
+      @if (!loadingCapabilities && capabilities.length === 0) {
+        <div class="no-capabilities">
           <mat-icon>sensors_off</mat-icon>
           <p>No capabilities found for this device.</p>
           <span>Provision the device first so it can report its capabilities.</span>
         </div>
       }
 
-      @if (blueprints.length > 0) {
+      @if (capabilities.length > 0) {
 
         <!-- Active Actions -->
         <p class="section-label">Active Actions</p>
@@ -117,7 +117,7 @@
                   }
                 </div>
                 <div class="chip-row">
-                  <span class="type-chip" [class.sensor]="item.bp.mqtt_action_type === 'telemetry'" [class.command]="item.bp.mqtt_action_type !== 'telemetry'">{{ typeChip(item.bp) }}</span>
+                  <span class="type-chip" [class.sensor]="item.cap.mqtt_action_type === 'telemetry'" [class.command]="item.cap.mqtt_action_type !== 'telemetry'">{{ typeChip(item.cap) }}</span>
                 </div>
               </div>
 
@@ -129,12 +129,12 @@
                     <input matInput [(ngModel)]="editName" />
                   </mat-form-field>
 
-                  @if (pinSlots(item.bp).length > 0) {
+                  @if (pinSlots(item.cap).length > 0) {
                     <p class="field-section-label">Pin Assignment</p>
-                    @for (slot of pinSlots(item.bp); track slot.key) {
+                    @for (slot of pinSlots(item.cap); track slot.id) {
                       <mat-form-field appearance="outline" class="pin-field">
                         <mat-label>{{ slot.label }}</mat-label>
-                        <input matInput type="number" min="1" [(ngModel)]="editPinValues[slot.key]" />
+                        <input matInput type="number" min="1" [(ngModel)]="editPinValues[slot.id]" />
                         <mat-hint>{{ slot.description }}</mat-hint>
                         <mat-icon matSuffix class="mode-icon" [matTooltip]="slot.mode">
                           {{ slot.mode === 'OUTPUT' ? 'output' : 'input' }}
@@ -143,18 +143,18 @@
                     }
                   }
 
-                  @if (item.bp.mqtt_action_type === 'telemetry') {
+                  @if (item.cap.mqtt_action_type === 'telemetry') {
                     <p class="field-section-label">Polling Interval</p>
                     <mat-form-field appearance="outline" class="pin-field">
                       <mat-label>Interval (ms)</mat-label>
                       <input matInput type="number" [(ngModel)]="editIntervalMs"
-                        [min]="item.bp.min_telemetry_interval_ms ?? 0" />
-                      <mat-hint>Min: {{ item.bp.min_telemetry_interval_ms ?? 0 }} ms</mat-hint>
+                        [min]="item.cap.min_telemetry_interval_ms ?? 0" />
+                      <mat-hint>Min: {{ item.cap.min_telemetry_interval_ms ?? 0 }} ms</mat-hint>
                     </mat-form-field>
                   }
                 </div>
               } @else {
-                @if (item.bp.min_telemetry_interval_ms || item.instance.intervalMs) {
+                @if (item.cap.min_telemetry_interval_ms || item.instance.intervalMs) {
                   <div class="card-body">
                     @if (item.instance.intervalMs) {
                       <div class="meta-row">
@@ -162,10 +162,10 @@
                         <span>{{ item.instance.intervalMs }} ms</span>
                       </div>
                     }
-                    @if (item.bp.min_telemetry_interval_ms) {
+                    @if (item.cap.min_telemetry_interval_ms) {
                       <div class="meta-row">
                         <span class="meta-label">Min interval</span>
-                        <span>{{ item.bp.min_telemetry_interval_ms }} ms</span>
+                        <span>{{ item.cap.min_telemetry_interval_ms }} ms</span>
                       </div>
                     }
                   </div>
@@ -176,15 +176,15 @@
                 @if (editingInstanceId === item.instance.id) {
                   <button mat-button (click)="cancelEdit()">Cancel</button>
                   <button mat-flat-button color="primary"
-                    [disabled]="!canSaveEdit(item.bp)"
-                    (click)="saveEdit(item.bp, item.instance)">Save</button>
+                    [disabled]="!canSaveEdit(item.cap)"
+                    (click)="saveEdit(item.cap, item.instance)">Save</button>
                 } @else {
                   <button mat-icon-button matTooltip="Edit"
                     [disabled]="item.instance.status === 'deprecated'"
-                    (click)="startEdit(item.bp, item.instance)">
+                    (click)="startEdit(item.cap, item.instance)">
                     <mat-icon>edit</mat-icon>
                   </button>
-                  <button mat-button class="remove-btn" (click)="removeAction(item.bp, item.instance)">
+                  <button mat-button class="remove-btn" (click)="removeAction(item.cap, item.instance)">
                     <mat-icon>remove_circle_outline</mat-icon> Remove
                   </button>
                 }
@@ -196,28 +196,28 @@
         <!-- Available Capabilities -->
         <p class="section-label">Available Capabilities</p>
         <div class="bp-grid">
-          @for (bp of blueprints; track bp.id) {
-            <div class="bp-card lattice-card" [class.expanded]="expandedBlueprintId === bp.id"
-              [class.dimmed]="expandedBlueprintId !== null && expandedBlueprintId !== bp.id">
+          @for (cap of capabilities; track cap.id) {
+            <div class="bp-card lattice-card" [class.expanded]="expandedCapabilityId === cap.id"
+              [class.dimmed]="expandedCapabilityId !== null && expandedCapabilityId !== cap.id">
 
               <div class="card-header">
-                <div class="card-title">{{ bp.label }}</div>
+                <div class="card-title">{{ cap.label }}</div>
                 <div class="chip-row">
-                  <span class="type-chip" [class.sensor]="bp.mqtt_action_type === 'telemetry'" [class.command]="bp.mqtt_action_type !== 'telemetry'">{{ typeChip(bp) }}</span>
-                  @if (bp.instances.length > 0) {
-                    <span class="instance-count">{{ bp.instances.length }} active</span>
+                  <span class="type-chip" [class.sensor]="cap.mqtt_action_type === 'telemetry'" [class.command]="cap.mqtt_action_type !== 'telemetry'">{{ typeChip(cap) }}</span>
+                  @if (cap.instances.length > 0) {
+                    <span class="instance-count">{{ cap.instances.length }} active</span>
                   }
                 </div>
               </div>
 
-              @if (expandedBlueprintId === bp.id) {
+              @if (expandedCapabilityId === cap.id) {
                 <div class="card-body">
-                  @if (pinSlots(bp).length > 0) {
+                  @if (pinSlots(cap).length > 0) {
                     <p class="field-section-label">Pin Assignment</p>
-                    @for (slot of pinSlots(bp); track slot.key) {
+                    @for (slot of pinSlots(cap); track slot.id) {
                       <mat-form-field appearance="outline" class="pin-field">
                         <mat-label>{{ slot.label }}</mat-label>
-                        <input matInput type="number" min="1" [(ngModel)]="pinInputValues[slot.key]" />
+                        <input matInput type="number" min="1" [(ngModel)]="pinInputValues[slot.id]" />
                         <mat-hint>{{ slot.description }}</mat-hint>
                         <mat-icon matSuffix class="mode-icon" [matTooltip]="slot.mode">
                           {{ slot.mode === 'OUTPUT' ? 'output' : 'input' }}
@@ -226,38 +226,38 @@
                     }
                   }
 
-                  @if (bp.mqtt_action_type === 'telemetry') {
+                  @if (cap.mqtt_action_type === 'telemetry') {
                     <p class="field-section-label">Polling Interval</p>
                     <mat-form-field appearance="outline" class="pin-field">
                       <mat-label>Interval (ms)</mat-label>
                       <input matInput type="number" [(ngModel)]="intervalInputValue"
-                        [min]="bp.min_telemetry_interval_ms ?? 0" />
-                      <mat-hint>Min: {{ bp.min_telemetry_interval_ms ?? 0 }} ms</mat-hint>
+                        [min]="cap.min_telemetry_interval_ms ?? 0" />
+                      <mat-hint>Min: {{ cap.min_telemetry_interval_ms ?? 0 }} ms</mat-hint>
                     </mat-form-field>
                   }
                 </div>
               } @else {
-                @if (bp.min_telemetry_interval_ms) {
+                @if (cap.min_telemetry_interval_ms) {
                   <div class="card-body">
                     <div class="meta-row">
                       <span class="meta-label">Min interval</span>
-                      <span>{{ bp.min_telemetry_interval_ms }} ms</span>
+                      <span>{{ cap.min_telemetry_interval_ms }} ms</span>
                     </div>
                   </div>
                 }
               }
 
               <div class="card-actions">
-                @if (expandedBlueprintId !== bp.id) {
-                  <button mat-flat-button color="primary" (click)="startAdd(bp)">
+                @if (expandedCapabilityId !== cap.id) {
+                  <button mat-flat-button color="primary" (click)="startAdd(cap)">
                     <mat-icon>add</mat-icon>
-                    {{ bp.instances.length > 0 ? 'Add another' : 'Add' }}
+                    {{ cap.instances.length > 0 ? 'Add another' : 'Add' }}
                   </button>
                 } @else {
                   <button mat-button (click)="cancelAdd()">Cancel</button>
                   <button mat-flat-button color="primary"
-                    [disabled]="!canConfirm(bp)"
-                    (click)="confirmAdd(bp)">Confirm</button>
+                    [disabled]="!canConfirm(cap)"
+                    (click)="confirmAdd(cap)">Confirm</button>
                 }
               </div>
             </div>

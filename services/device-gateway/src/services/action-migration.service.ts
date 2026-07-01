@@ -28,12 +28,12 @@ export interface UpdatePreview {
 function isCompatible(
   implType: string,
   existingPins: PinSlot[],
-  blueprint: { implementation_type: string; configurable_pins: unknown },
+  capability: { implementation_type: string; pins: PinSlot[] },
 ): { compatible: boolean; reason?: string } {
-  if (implType !== blueprint.implementation_type) {
+  if (implType !== capability.implementation_type) {
     return { compatible: false, reason: 'implementation type changed' };
   }
-  const newPins = (blueprint.configurable_pins as PinSlot[] | null) ?? [];
+  const newPins = capability.pins ?? [];
   if (existingPins.length !== newPins.length) {
     return { compatible: false, reason: 'pin count changed' };
   }
@@ -69,25 +69,26 @@ class ActionMigrationService {
       return { up_to_date: true };
     }
 
-    const [blueprints, activeActions] = await Promise.all([
-      db.deviceCapabilityBlueprint.findMany({
+    const [capabilities, activeActions] = await Promise.all([
+      db.deviceCapability.findMany({
         where: { device_id: latestDevice.id },
+        include: { pins: true },
       }),
       db.userDeviceAction.findMany({
         where: { user_device_id: userDeviceId, status: { in: ['active', 'staged_deprecated'] } },
-        include: { action: true },
+        include: { capability: { include: { pins: true } } },
       }),
     ]);
 
-    const blueprintByMqttName = new Map(blueprints.map((b) => [b.mqtt_action_name, b]));
+    const capabilityByMqttName = new Map(capabilities.map((c) => [c.mqtt_action_name, c]));
 
     const actions: ActionPreview[] = activeActions.map((ua) => {
-      const bp = blueprintByMqttName.get(ua.action.mqtt_action_name ?? '');
+      const bp = capabilityByMqttName.get(ua.capability.mqtt_action_name ?? '');
       if (!bp) {
         return { id: ua.id, name: ua.action_name, mqttName: ua.mqtt_action_name, status: 'deprecated', reason: 'removed from new version' };
       }
-      const existingPins = ((ua.action.pins ?? []) as unknown as PinSlot[]);
-      const check = isCompatible(ua.action.implementation_type, existingPins, bp);
+      const existingPins = ua.capability.pins as PinSlot[];
+      const check = isCompatible(ua.capability.implementation_type, existingPins, bp);
       return {
         id: ua.id,
         name: ua.action_name,
@@ -109,15 +110,15 @@ class ActionMigrationService {
 
     if (currentDevice.id === latestDevice.id) return;
 
-    const [blueprints, activeActions] = await Promise.all([
-      db.deviceCapabilityBlueprint.findMany({ where: { device_id: latestDevice.id } }),
+    const [capabilities, activeActions] = await Promise.all([
+      db.deviceCapability.findMany({ where: { device_id: latestDevice.id }, include: { pins: true } }),
       db.userDeviceAction.findMany({
         where: { user_device_id: userDeviceId, status: 'active' },
-        include: { action: true },
+        include: { capability: { include: { pins: true } }, pins: true },
       }),
     ]);
 
-    const blueprintByMqttName = new Map(blueprints.map((b) => [b.mqtt_action_name, b]));
+    const capabilityByMqttName = new Map(capabilities.map((c) => [c.mqtt_action_name, c]));
 
     await db.$transaction(async (tx) => {
       // Clear any previous in-flight OTA staging before applying a new one.
@@ -130,49 +131,45 @@ class ActionMigrationService {
       });
 
       for (const ua of activeActions) {
-        const bp = blueprintByMqttName.get(ua.action.mqtt_action_name ?? '');
+        const bp = capabilityByMqttName.get(ua.capability.mqtt_action_name ?? '');
         if (!bp) {
           // Incompatible — stage for deprecation; leave active until OTA confirms.
           await tx.userDeviceAction.update({ where: { id: ua.id }, data: { status: 'staged_deprecated' } });
           continue;
         }
-        const existingPins = ((ua.action.pins ?? []) as unknown as PinSlot[]);
-        const { compatible } = isCompatible(ua.action.implementation_type, existingPins, bp);
+        const existingPins = ua.capability.pins as PinSlot[];
+        const { compatible } = isCompatible(ua.capability.implementation_type, existingPins, bp);
         if (!compatible) {
           await tx.userDeviceAction.update({ where: { id: ua.id }, data: { status: 'staged_deprecated' } });
           continue;
         }
 
-        // Upsert a DeviceAction template for the new device version.
-        const newAction = await tx.deviceAction.upsert({
-          where: { device_id_default_name: { device_id: latestDevice.id, default_name: bp.label } },
-          update: {
-            mqtt_action_name: bp.mqtt_action_name,
-            mqtt_action_type: bp.mqtt_action_type,
-            implementation_type: bp.implementation_type,
-          },
-          create: {
-            device_id: latestDevice.id,
-            default_name: bp.label,
-            mqtt_action_name: bp.mqtt_action_name,
-            mqtt_action_type: bp.mqtt_action_type,
-            implementation_type: bp.implementation_type,
-            telemetry_interval_ms: bp.min_telemetry_interval_ms ?? undefined,
-          },
-        });
+        // Create new action as staged_active, pointing at the new version's capability —
+        // not yet live until the device confirms OTA. (No separate action template: the
+        // DeviceCapability catalog row IS the per-version template since F1.5.)
+        // Map old pin IDs → keys using the old capability's catalog pins,
+        // then find the corresponding pin in the new capability by key.
+        const oldPinIdToKey = new Map(ua.capability.pins.map((p) => [p.id, p.key]));
+        const newKeyToPinId = new Map(bp.pins.map((p) => [p.key, p.id]));
+        const migratedPins = ua.pins
+          .map((p) => {
+            const key = oldPinIdToKey.get(p.capability_pin_id);
+            const newPinId = key !== undefined ? newKeyToPinId.get(key) : undefined;
+            return newPinId !== undefined ? { capability_pin_id: newPinId, pin_number: p.pin_number } : null;
+          })
+          .filter((p): p is { capability_pin_id: number; pin_number: number } => p !== null);
 
-        // Create new action as staged_active — not yet live until device confirms OTA.
         await tx.userDeviceAction.create({
           data: {
             user_device_id: userDeviceId,
-            action_id: newAction.id,
+            capability_id: bp.id,
             action_name: ua.action_name,
             mqtt_action_name: ua.mqtt_action_name,
-            pins: ua.pins ?? undefined,
+            pins: { create: migratedPins },
             current_state: ua.current_state ?? undefined,
             status: 'staged_active',
             sort_order: ua.sort_order,
-            group_name: ua.group_name ?? undefined,
+            group_id: ua.group_id ?? undefined,
             telemetry_interval_ms: ua.telemetry_interval_ms ?? undefined,
           },
         });

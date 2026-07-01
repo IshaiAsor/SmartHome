@@ -1,0 +1,212 @@
+import { db } from '../db';
+
+// User-facing device management (F2.5).
+//
+// Device *registration* is owned by device-gateway provisioning (device-driven, upsert
+// by MAC — see project_provisioning_redesign), so the api does not create user_devices.
+// It owns the rest of the lifecycle: list, rename, delete — always scoped to the owner.
+
+export interface DeviceView {
+  id: number;
+  deviceName: string;
+  online: boolean;
+  lastOnlineDate: Date | null;
+  type: string;
+  version: string;
+  current_firmware_version: string | null;
+  update_available: boolean;
+}
+
+export interface PinSlotView { id: number; key: string; label: string; mode: string; }
+export interface UserActionView {
+  id: number;
+  name: string;
+  mqttName: string;
+  pins: { pinNumber: number; pinMode: string }[];
+  intervalMs: number | null;
+  status: string;
+}
+export interface CapabilityView {
+  id: number;            // DeviceCapability id
+  capability_key: string;
+  label: string;
+  implementation_type: string;
+  mqtt_action_type: string;
+  mqtt_action_name: string;
+  min_telemetry_interval_ms: number | null;
+  configurable_pins: PinSlotView[];
+  instances: UserActionView[];
+}
+export interface PinInput { capability_pin_id: number; pin_number: number; }
+
+class DeviceMgmtService {
+  async listUserDevices(userId: number): Promise<DeviceView[]> {
+    const devices = await db.userDevice.findMany({
+      where: { user_id: userId },
+      include: { device: true },
+      orderBy: { id: 'asc' },
+    });
+
+    // Latest catalog version per device type (one query per unique type) → update badge.
+    const uniqueTypes = [...new Set(devices.map((d) => d.device.type))];
+    const latestVersions = new Map<string, string>();
+    await Promise.all(
+      uniqueTypes.map(async (type) => {
+        const latest = await db.device.findFirst({ where: { type }, orderBy: { created_at: 'desc' } });
+        if (latest) latestVersions.set(type, latest.version);
+      }),
+    );
+
+    return devices.map((d) => {
+      const latestVersion = latestVersions.get(d.device.type) ?? d.device.version;
+      return {
+        id:                       d.id,
+        deviceName:               d.name,
+        online:                   d.online,
+        lastOnlineDate:           d.last_online_date,
+        type:                     d.device.type,
+        version:                  d.device.version,
+        current_firmware_version: d.current_firmware_version,
+        update_available:         d.device.version !== latestVersion,
+      };
+    });
+  }
+
+  async renameDevice(userId: number, deviceId: number, name: string): Promise<DeviceView> {
+    if (typeof name !== 'string' || !name.trim()) {
+      throw Object.assign(new Error('name is required'), { statusCode: 400 });
+    }
+    await this.ensureOwned(userId, deviceId);
+    await db.userDevice.update({
+      where: { id: deviceId },
+      data: { name: name.trim(), updated_at: new Date() },
+    });
+    const [view] = (await this.listUserDevices(userId)).filter((d) => d.id === deviceId);
+    return view;
+  }
+
+  async deleteDevice(userId: number, deviceId: number): Promise<void> {
+    await this.ensureOwned(userId, deviceId);
+    // Cascades user_device_actions (and their pins) via the schema.
+    await db.userDevice.delete({ where: { id: deviceId } });
+  }
+
+  // ─── Capability activation ────────────────────────────────────────────
+  async listCapabilities(userId: number, deviceId: number): Promise<CapabilityView[]> {
+    const device = await this.getOwnedDevice(userId, deviceId);
+    const [caps, actions] = await Promise.all([
+      db.deviceCapability.findMany({
+        where: { device_id: device.device_type_id },
+        include: { pins: true },
+        orderBy: { id: 'asc' },
+      }),
+      db.userDeviceAction.findMany({
+        where: { user_device_id: deviceId },
+        include: { pins: true },
+      }),
+    ]);
+
+    return caps.map((cap) => {
+      const modeByPinId = new Map(cap.pins.map((p) => [p.id, p.mode]));
+      return {
+        id:                        cap.id,
+        capability_key:            cap.capability_key,
+        label:                     cap.label,
+        implementation_type:       cap.implementation_type,
+        mqtt_action_type:          cap.mqtt_action_type,
+        mqtt_action_name:          cap.mqtt_action_name,
+        min_telemetry_interval_ms: cap.min_telemetry_interval_ms,
+        configurable_pins:         cap.pins.map((p) => ({ id: p.id, key: p.key, label: p.label, mode: p.mode })),
+        instances: actions
+          .filter((a) => a.capability_id === cap.id)
+          .map((a) => ({
+            id:        a.id,
+            name:      a.action_name,
+            mqttName:  a.mqtt_action_name,
+            pins:      a.pins.map((p) => ({ pinNumber: p.pin_number, pinMode: modeByPinId.get(p.capability_pin_id) ?? 'OUTPUT' })),
+            intervalMs: a.telemetry_interval_ms,
+            status:    a.status,
+          })),
+      };
+    });
+  }
+
+  async activateCapability(
+    userId: number,
+    deviceId: number,
+    body: { capability_id: number; telemetry_interval_ms?: number | null; pins?: PinInput[] },
+  ): Promise<{ id: number }> {
+    const device = await this.getOwnedDevice(userId, deviceId);
+    const cap = await db.deviceCapability.findUnique({ where: { id: body.capability_id } });
+    if (!cap || cap.device_id !== device.device_type_id) {
+      throw Object.assign(new Error('Capability not valid for this device'), { statusCode: 400 });
+    }
+
+    // Unique mqtt_action_name per instance (first uses the base name).
+    const existing = await db.userDeviceAction.count({
+      where: { user_device_id: deviceId, capability_id: cap.id },
+    });
+    const mqttName = existing === 0 ? cap.mqtt_action_name : `${cap.mqtt_action_name}_${existing + 1}`;
+
+    const action = await db.userDeviceAction.create({
+      data: {
+        user_device_id:        deviceId,
+        capability_id:         cap.id,
+        action_name:           cap.label,
+        mqtt_action_name:      mqttName,
+        status:                'active',
+        telemetry_interval_ms: body.telemetry_interval_ms ?? null,
+        pins: { create: (body.pins ?? []).map((p) => ({ capability_pin_id: p.capability_pin_id, pin_number: p.pin_number })) },
+      },
+    });
+    return { id: action.id };
+  }
+
+  async updateActivatedAction(
+    userId: number,
+    deviceId: number,
+    actionId: number,
+    body: { name?: string; telemetry_interval_ms?: number | null; pins?: PinInput[] },
+  ): Promise<void> {
+    await this.getOwnedDevice(userId, deviceId);
+    const action = await db.userDeviceAction.findUnique({ where: { id: actionId }, select: { user_device_id: true } });
+    if (!action || action.user_device_id !== deviceId) {
+      throw Object.assign(new Error('Action not found'), { statusCode: 404 });
+    }
+
+    await db.$transaction(async (tx) => {
+      await tx.userDeviceAction.update({
+        where: { id: actionId },
+        data: {
+          action_name:           body.name?.trim(),
+          telemetry_interval_ms: body.telemetry_interval_ms,
+          updated_at:            new Date(),
+        },
+      });
+      if (body.pins !== undefined) {
+        await tx.userDeviceActionPin.deleteMany({ where: { user_device_action_id: actionId } });
+        if (body.pins.length) {
+          await tx.userDeviceActionPin.createMany({
+            data: body.pins.map((p) => ({ user_device_action_id: actionId, capability_pin_id: p.capability_pin_id, pin_number: p.pin_number })),
+          });
+        }
+      }
+    });
+  }
+
+  private async ensureOwned(userId: number, deviceId: number): Promise<void> {
+    await this.getOwnedDevice(userId, deviceId);
+  }
+
+  private async getOwnedDevice(userId: number, deviceId: number): Promise<{ id: number; device_type_id: number }> {
+    const device = await db.userDevice.findUnique({
+      where: { id: deviceId },
+      select: { id: true, user_id: true, device_type_id: true },
+    });
+    if (!device) throw Object.assign(new Error('Device not found'), { statusCode: 404 });
+    if (device.user_id !== userId) throw Object.assign(new Error('Forbidden'), { statusCode: 403 });
+    return { id: device.id, device_type_id: device.device_type_id };
+  }
+}
+
+export const deviceMgmtService = new DeviceMgmtService();

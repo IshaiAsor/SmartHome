@@ -1,6 +1,6 @@
 import { Component, DestroyRef, HostListener, inject, OnInit } from '@angular/core';
 import { MAT_BOTTOM_SHEET_DATA, MatBottomSheetRef } from '@angular/material/bottom-sheet';
-import { iconForDeviceType, hasTrait, COLOR_OPTIONS } from 'src/app/utils/device-type.utils';
+import { iconForDeviceType, hasTrait, COLOR_OPTIONS, activeTraitValue, traitIconName, controllableTraits } from 'src/app/utils/device-type.utils';
 import { ActionGroupView } from 'src/app/services/user.actions.service';
 import { UserActionsService } from 'src/app/services/user.actions.service';
 import { DeviceActionView } from 'src/app/services/device.mgmt.service';
@@ -49,7 +49,15 @@ export class GroupBottomSheetComponent implements OnInit {
 
   iconForType = iconForDeviceType;
   hasTrait = hasTrait;
+  activeTraitValue = activeTraitValue;
+  traitIconName = traitIconName;
+  controllableTraits = controllableTraits;
   colorOptions = COLOR_OPTIONS;
+
+  setDefaultTrait(action: DeviceActionView, traitId: number) {
+    action.defaultTraitId = traitId;
+    this.userActionsService.setDefaultTrait(action.id, traitId).subscribe();
+  }
 
   @HostListener('document:pointerup')
   onDocumentPointerUp() { this.draggingActionId = null; }
@@ -146,26 +154,18 @@ export class GroupBottomSheetComponent implements OnInit {
   removeFromGroup(action: DeviceActionView) {
     const remaining = this.actions.filter(a => a.id !== action.id);
 
-    if (remaining.length === 0) {
-      // Last item: clear group_name on the removed one too
-      this.userActionsService.setActionGroup(action.id, null).subscribe(() => {
-        this.sheetRef.dismiss(true);
-      });
-      return;
-    }
-
     if (remaining.length === 1) {
-      // Only 1 left after removal: dissolve the group entirely
+      // Only 1 left after removal: dissolve the group entirely (backend purges empty group on next list)
       forkJoin([
-        this.userActionsService.setActionGroup(action.id, null),
-        this.userActionsService.setActionGroup(remaining[0].id, null),
+        this.userActionsService.removeActionFromGroup(action.id),
+        this.userActionsService.removeActionFromGroup(remaining[0].id),
       ]).subscribe(() => {
         this.sheetRef.dismiss(true);
       });
       return;
     }
 
-    this.userActionsService.setActionGroup(action.id, null).subscribe(() => {
+    this.userActionsService.removeActionFromGroup(action.id).subscribe(() => {
       this.actions = remaining;
       this.sheetRef.dismiss(true);
     });

@@ -1,29 +1,29 @@
-import { db, UserDeviceAction, DeviceAction, UserDevice } from '@lattice/prisma-client';
+import { db, UserDeviceAction, DeviceCapability, UserDevice, UserActionGroup } from '@lattice/prisma-client';
 
-export type UserDeviceActionWithAction = UserDeviceAction & { action: DeviceAction };
-export type UserDeviceActionWithActionAndDevice = UserDeviceAction & { action: DeviceAction; user_device: UserDevice };
+export type UserDeviceActionWithCapability = UserDeviceAction & { capability: DeviceCapability; group: UserActionGroup | null };
+export type UserDeviceActionWithCapabilityAndDevice = UserDeviceAction & { capability: DeviceCapability; user_device: UserDevice; group: UserActionGroup | null };
 
 class UserDevicesActionsRepository {
-  async getAllByUserId(userId: number): Promise<UserDeviceActionWithActionAndDevice[]> {
+  async getAllByUserId(userId: number): Promise<UserDeviceActionWithCapabilityAndDevice[]> {
     return db.userDeviceAction.findMany({
       where: { user_device: { user_id: userId } },
-      include: { action: true, user_device: true },
+      include: { capability: true, user_device: true, group: true },
       orderBy: { sort_order: 'asc' },
-    }) as Promise<UserDeviceActionWithActionAndDevice[]>;
+    }) as Promise<UserDeviceActionWithCapabilityAndDevice[]>;
   }
 
-  async getById(actionId: number): Promise<UserDeviceActionWithAction | null> {
+  async getById(actionId: number): Promise<UserDeviceActionWithCapability | null> {
     return db.userDeviceAction.findFirst({
       where: { id: actionId },
-      include: { action: true },
-    }) as Promise<UserDeviceActionWithAction | null>;
+      include: { capability: true, group: true },
+    }) as Promise<UserDeviceActionWithCapability | null>;
   }
 
-  async getByDeviceAndActionName(deviceId: number, actionName: string): Promise<UserDeviceActionWithAction | null> {
+  async getByDeviceAndActionName(deviceId: number, actionName: string): Promise<UserDeviceActionWithCapability | null> {
     return db.userDeviceAction.findFirst({
       where: { user_device_id: deviceId, mqtt_action_name: actionName },
-      include: { action: true },
-    }) as Promise<UserDeviceActionWithAction | null>;
+      include: { capability: true, group: true },
+    }) as Promise<UserDeviceActionWithCapability | null>;
   }
 }
 

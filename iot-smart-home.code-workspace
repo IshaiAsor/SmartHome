@@ -61,6 +61,10 @@
       "path": "services/google-home"
     },
     {
+      "name": "API",
+      "path": "services/api"
+    },
+    {
       "name": "Packages",
       "path": "packages"
     }

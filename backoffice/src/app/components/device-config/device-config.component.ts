@@ -2,15 +2,15 @@ import { Component, DestroyRef, inject, OnInit } from '@angular/core';
 import { Router } from '@angular/router';
 import { MatSnackBar } from '@angular/material/snack-bar';
 import { SHARED_MATERIAL } from 'src/app/shared-ui';
-import { DeviceMgmtService, DeviceView, BlueprintView, BlueprintInstanceView, PinSlot } from 'src/app/services/device.mgmt.service';
+import { DeviceMgmtService, DeviceView, CapabilityView, UserActionView, PinSlot } from 'src/app/services/device.mgmt.service';
 import { UserActionsService } from 'src/app/services/user.actions.service';
 import { AuthService } from 'src/app/services/auth.service';
 import { DeviceSocketService } from 'src/app/services/device.socket.service';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 
 export interface ActiveInstance {
-  bp: BlueprintView;
-  instance: BlueprintInstanceView;
+  cap: CapabilityView;
+  instance: UserActionView;
 }
 
 @Component({
@@ -30,24 +30,24 @@ export class DeviceConfigComponent implements OnInit {
 
   devices: DeviceView[] = [];
   selectedDevice: DeviceView | null = null;
-  blueprints: BlueprintView[] = [];
+  capabilities: CapabilityView[] = [];
   loadingDevices = false;
-  loadingBlueprints = false;
+  loadingCapabilities = false;
 
-  expandedBlueprintId: number | null = null;
+  expandedCapabilityId: number | null = null;
   intervalInputValue: number | null = null;
-  pinInputValues: Record<string, number | null> = {};
+  pinInputValues: Record<number, number | null> = {};
 
   editingInstanceId: number | null = null;
   editName = '';
   editIntervalMs: number | null = null;
-  editPinValues: Record<string, number | null> = {};
+  editPinValues: Record<number, number | null> = {};
 
   get isAdmin(): boolean { return this.authService.getCurrentUser()?.role === 'admin'; }
 
   get activeInstances(): ActiveInstance[] {
-    return this.blueprints.flatMap(bp =>
-      bp.instances.map(instance => ({ bp, instance }))
+    return this.capabilities.flatMap(cap =>
+      cap.instances.map(instance => ({ cap, instance }))
     );
   }
 
@@ -77,68 +77,68 @@ export class DeviceConfigComponent implements OnInit {
     this.selectedDevice = device;
     this.cancelAdd();
     this.cancelEdit();
-    this.loadBlueprints();
+    this.loadCapabilities();
   }
 
-  loadBlueprints() {
+  loadCapabilities() {
     if (!this.selectedDevice) return;
-    this.loadingBlueprints = true;
-    this.deviceMgmtService.getDeviceBlueprints(this.selectedDevice.id).subscribe({
-      next: (blueprints) => { this.blueprints = blueprints; this.loadingBlueprints = false; },
-      error: () => { this.snack.open('Failed to load capabilities', 'Close', { duration: 3000 }); this.loadingBlueprints = false; },
+    this.loadingCapabilities = true;
+    this.deviceMgmtService.getDeviceCapabilities(this.selectedDevice.id).subscribe({
+      next: (caps) => { this.capabilities = caps; this.loadingCapabilities = false; },
+      error: () => { this.snack.open('Failed to load capabilities', 'Close', { duration: 3000 }); this.loadingCapabilities = false; },
     });
   }
 
-  pinSlots(bp: BlueprintView): PinSlot[] {
-    return bp.configurable_pins ?? [];
+  pinSlots(cap: CapabilityView): PinSlot[] {
+    return cap.configurable_pins ?? [];
   }
 
-  startAdd(bp: BlueprintView) {
-    this.expandedBlueprintId = bp.id;
-    this.intervalInputValue = bp.min_telemetry_interval_ms ?? null;
+  startAdd(cap: CapabilityView) {
+    this.expandedCapabilityId = cap.id;
+    this.intervalInputValue = cap.min_telemetry_interval_ms ?? null;
     this.pinInputValues = {};
-    for (const slot of this.pinSlots(bp)) {
-      this.pinInputValues[slot.key] = null;
+    for (const slot of this.pinSlots(cap)) {
+      this.pinInputValues[slot.id] = null;
     }
   }
 
   cancelAdd() {
-    this.expandedBlueprintId = null;
+    this.expandedCapabilityId = null;
     this.intervalInputValue = null;
     this.pinInputValues = {};
   }
 
-  confirmAdd(bp: BlueprintView) {
+  confirmAdd(cap: CapabilityView) {
     if (!this.selectedDevice) return;
 
-    const slots = this.pinSlots(bp);
+    const slots = this.pinSlots(cap);
     const pins = slots.map(slot => ({
-      pinNumber: this.pinInputValues[slot.key] as number,
-      pinMode: slot.mode,
+      capability_pin_id: slot.id,
+      pin_number: this.pinInputValues[slot.id] as number,
     }));
 
-    const intervalMs = bp.mqtt_action_type === 'telemetry' ? this.intervalInputValue : null;
+    const intervalMs = cap.mqtt_action_type === 'telemetry' ? this.intervalInputValue : null;
     const deviceId = this.selectedDevice.id;
 
-    this.deviceMgmtService.activateBlueprint(deviceId, bp.id, intervalMs, pins).subscribe({
+    this.deviceMgmtService.activateCapability(deviceId, cap.id, intervalMs, pins).subscribe({
       next: () => {
-        this.snack.open(`${bp.label} added — restarting device`, 'Close', { duration: 2500 });
+        this.snack.open(`${cap.label} added — restarting device`, 'Close', { duration: 2500 });
         this.cancelAdd();
-        this.loadBlueprints();
+        this.loadCapabilities();
         this.deviceMgmtService.restartDevice(deviceId).subscribe();
       },
       error: () => this.snack.open('Failed to add action', 'Close', { duration: 3000 }),
     });
   }
 
-  startEdit(bp: BlueprintView, instance: BlueprintInstanceView) {
+  startEdit(cap: CapabilityView, instance: UserActionView) {
     this.editingInstanceId = instance.id;
     this.editName = instance.name;
-    this.editIntervalMs = instance.intervalMs ?? (bp.min_telemetry_interval_ms ?? null);
+    this.editIntervalMs = instance.intervalMs ?? (cap.min_telemetry_interval_ms ?? null);
     this.editPinValues = {};
-    const slots = this.pinSlots(bp);
+    const slots = this.pinSlots(cap);
     for (let i = 0; i < slots.length; i++) {
-      this.editPinValues[slots[i].key] = instance.pins?.[i]?.pinNumber ?? null;
+      this.editPinValues[slots[i].id] = instance.pins?.[i]?.pinNumber ?? null;
     }
   }
 
@@ -149,12 +149,12 @@ export class DeviceConfigComponent implements OnInit {
     this.editPinValues = {};
   }
 
-  saveEdit(bp: BlueprintView, instance: BlueprintInstanceView) {
+  saveEdit(cap: CapabilityView, instance: UserActionView) {
     if (!this.selectedDevice) return;
-    const slots = this.pinSlots(bp);
+    const slots = this.pinSlots(cap);
     const pins = slots.map(slot => ({
-      pinNumber: this.editPinValues[slot.key] as number,
-      pinMode: slot.mode,
+      capability_pin_id: slot.id,
+      pin_number: this.editPinValues[slot.id] as number,
     }));
     const deviceId = this.selectedDevice.id;
     this.deviceMgmtService.updateActivatedAction(
@@ -162,58 +162,58 @@ export class DeviceConfigComponent implements OnInit {
       instance.id,
       {
         name: this.editName,
-        ...(bp.mqtt_action_type === 'telemetry' && { telemetry_interval_ms: this.editIntervalMs }),
+        ...(cap.mqtt_action_type === 'telemetry' && { telemetry_interval_ms: this.editIntervalMs }),
         ...(slots.length > 0 && { pins }),
       },
     ).subscribe({
       next: () => {
-        this.snack.open(`${bp.label} updated — restarting device`, 'Close', { duration: 2500 });
+        this.snack.open(`${cap.label} updated — restarting device`, 'Close', { duration: 2500 });
         this.cancelEdit();
-        this.loadBlueprints();
+        this.loadCapabilities();
         this.deviceMgmtService.restartDevice(deviceId).subscribe();
       },
       error: () => this.snack.open('Failed to update action', 'Close', { duration: 3000 }),
     });
   }
 
-  canSaveEdit(bp: BlueprintView): boolean {
+  canSaveEdit(cap: CapabilityView): boolean {
     if (!this.editName.trim()) return false;
-    const slots = this.pinSlots(bp);
+    const slots = this.pinSlots(cap);
     const allPinsFilled = slots.every(s => {
-      const v = this.editPinValues[s.key];
+      const v = this.editPinValues[s.id];
       return v != null && v > 0;
     });
-    const intervalOk = bp.mqtt_action_type !== 'telemetry'
-      || (this.editIntervalMs != null && this.editIntervalMs >= (bp.min_telemetry_interval_ms ?? 0));
+    const intervalOk = cap.mqtt_action_type !== 'telemetry'
+      || (this.editIntervalMs != null && this.editIntervalMs >= (cap.min_telemetry_interval_ms ?? 0));
     return allPinsFilled && intervalOk;
   }
 
-  removeAction(bp: BlueprintView, instance: BlueprintInstanceView) {
+  removeAction(cap: CapabilityView, instance: UserActionView) {
     if (!this.selectedDevice) return;
     const deviceId = this.selectedDevice.id;
     this.userActionsService.deleteAction(instance.id).subscribe({
       next: () => {
         this.snack.open(`${instance.name} removed — restarting device`, 'Close', { duration: 2500 });
-        this.loadBlueprints();
+        this.loadCapabilities();
         this.deviceMgmtService.restartDevice(deviceId).subscribe();
       },
       error: () => this.snack.open('Failed to remove action', 'Close', { duration: 3000 }),
     });
   }
 
-  canConfirm(bp: BlueprintView): boolean {
-    const slots = this.pinSlots(bp);
+  canConfirm(cap: CapabilityView): boolean {
+    const slots = this.pinSlots(cap);
     const allPinsFilled = slots.every(s => {
-      const v = this.pinInputValues[s.key];
+      const v = this.pinInputValues[s.id];
       return v != null && v > 0;
     });
-    const intervalOk = bp.mqtt_action_type !== 'telemetry'
-      || (this.intervalInputValue != null && this.intervalInputValue >= (bp.min_telemetry_interval_ms ?? 0));
+    const intervalOk = cap.mqtt_action_type !== 'telemetry'
+      || (this.intervalInputValue != null && this.intervalInputValue >= (cap.min_telemetry_interval_ms ?? 0));
     return allPinsFilled && intervalOk;
   }
 
-  typeChip(bp: BlueprintView): string {
-    return bp.mqtt_action_type === 'telemetry' ? 'sensor' : 'command';
+  typeChip(cap: CapabilityView): string {
+    return cap.mqtt_action_type === 'telemetry' ? 'sensor' : 'command';
   }
 
   goToTemplates() {

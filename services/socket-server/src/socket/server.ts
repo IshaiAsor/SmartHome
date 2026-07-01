@@ -39,7 +39,7 @@ interface ClientActionStateUpdate {
  * `action_state_update` / `device_status_change` / `camera_frame` emits reach the right
  * `user_{userId}` rooms with no server-side relay code here.
  */
-export function initSocket(httpServer: http.Server, ch: Channel): Server {
+export async function initSocket(httpServer: http.Server, ch: Channel): Promise<Server> {
   const pubClient = new IORedis(env.valkey.url, {
     username: env.valkey.username,
     password: env.valkey.password,
@@ -48,6 +48,9 @@ export function initSocket(httpServer: http.Server, ch: Channel): Server {
   const subClient = pubClient.duplicate();
   pubClient.on('error', (err) => log.error({ err }, 'Redis pubClient error'));
   subClient.on('error', (err) => log.error({ err }, 'Redis subClient error'));
+
+  await Promise.all([pubClient.connect(), subClient.connect()]);
+  log.info('Valkey adapter clients connected');
 
   const io = new Server(httpServer, { cors: { origin: '*' } });
   io.adapter(createAdapter(pubClient, subClient));

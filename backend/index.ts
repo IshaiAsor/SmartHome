@@ -8,16 +8,9 @@ import path from 'path';
 import fs from 'fs';
 import config from './config/env.config';
 import deviceMgmtRoutes from './routes/device.mgmt.routes';
-import actionsMgmtRoutes from './routes/actions.mgmt.routes';
 import googleRoutes from './routes/google.routes';
-import authRoutes from './routes/auth.routes';
-import provisioningRoutes from './routes/provisioning.routes';
-import googleActionsTypesRoutes from './routes/google.actions.types.routes';
-import googleActionsTraitsRoutes from './routes/google.actions.traits.routes';
-import userRulesRoutes from './routes/user.rules.routes';
 import adminDeviceConfigRoutes from './routes/admin.device.config.routes';
-import vlmRoutes from './routes/vlm.routes';
-import emergencyRoutes from './routes/emergency.routes';
+// vlm.routes removed — VLM/ML moved to dedicated ml-router/ml-executor services
 import { sensorHistoryRepository } from './dal/sensor.history.repository';
 import cron from 'node-cron';
 import http from 'http';
@@ -47,18 +40,15 @@ app.use((req, _res, next) => {
   next();
 });
 
-app.use('/api/auth', authRoutes);
+// /api/auth + /api/mgmt/actions migrated to the new `api` service (F2). Device list/rename/
+// delete also moved there — device.mgmt.routes now serves only the not-yet-migrated
+// device-lifecycle ops (capability activation, reprovision, resets).
 app.use('/api/mgmt/devices',  deviceMgmtRoutes);
-app.use('/api/mgmt/actions', actionsMgmtRoutes);
 app.use('/api/google', googleRoutes);
-// Only provision-token remains here (app-facing); /provision + /refresh-token moved to device-gateway.
-app.use('/api/provisioning', provisioningRoutes);
-app.use('/api/google/actions/types', googleActionsTypesRoutes);
-app.use('/api/google/actions/traits', googleActionsTraitsRoutes);
-app.use('/api/rules', userRulesRoutes);
+// /api/rules + /api/emergency migrated to the new `api` service (F6.3/F9, unified via
+// UserRule.is_emergency). The monolith versions were already broken against the new schema.
 app.use('/api/device-config', adminDeviceConfigRoutes);
-app.use('/api/vlm', vlmRoutes);
-app.use('/api/emergency', emergencyRoutes);
+// /api/vlm removed — VLM/ML moved to dedicated ml-router/ml-executor services
 
 
 const rootDir = process.cwd();

@@ -29,16 +29,24 @@ class DeviceConfigurationService {
 
     const userActions = await db.userDeviceAction.findMany({
       where: { user_device_id: userDeviceId, status: 'active' },
-      include: { action: true },
+      include: { capability: { include: { pins: true } }, pins: true },
     });
 
-    const actions: ActionConfigDto[] = userActions.map((ua) => ({
-      mqtt_action_name:      ua.mqtt_action_name,
-      implementation_type:   ua.action.implementation_type,
-      mqtt_action_type:      ua.action.mqtt_action_type ?? 'command',
-      pins:                  (ua.pins ?? ua.action.pins ?? []) as unknown as PinConfigDto[],
-      telemetry_interval_ms: ua.telemetry_interval_ms ?? ua.action.telemetry_interval_ms ?? null,
-    }));
+    const actions: ActionConfigDto[] = userActions.map((ua) => {
+      // Catalog slot defines the pin mode; the instance assigns the GPIO number. Join by catalog pin id.
+      const modeByPinId = new Map(ua.capability.pins.map((p) => [p.id, p.mode]));
+      const pins: PinConfigDto[] = ua.pins.map((p) => ({
+        pinNumber: p.pin_number,
+        pinMode:   (modeByPinId.get(p.capability_pin_id) ?? 'OUTPUT') as PinConfigDto['pinMode'],
+      }));
+      return {
+        mqtt_action_name:      ua.mqtt_action_name,
+        implementation_type:   ua.capability.implementation_type,
+        mqtt_action_type:      ua.capability.mqtt_action_type ?? 'command',
+        pins,
+        telemetry_interval_ms: ua.telemetry_interval_ms ?? ua.capability.min_telemetry_interval_ms ?? null,
+      };
+    });
 
     return { device_type: userDevice.device.type ?? '', device_version: userDevice.device.version, actions };
   }

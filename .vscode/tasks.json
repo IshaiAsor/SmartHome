@@ -209,6 +209,17 @@
       "dependsOn": ["kill-google-home-ports", "build-shared-libs"]
     },
     {
+      "label": "kill-api-ports",
+      "type": "shell",
+      "command": "npx -y kill-port 9239 3100",
+      "presentation": { "reveal": "silent" },
+      "problemMatcher": []
+    },
+    {
+      "label": "prep-api",
+      "dependsOn": ["kill-api-ports", "build-shared-libs"]
+    },
+    {
       "type": "PlatformIO",
       "task": "Build",
       "problemMatcher": [

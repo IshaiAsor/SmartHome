@@ -1,0 +1,17 @@
+{
+  "name": "@lattice/device-sim",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Software ESP device simulator — pure HTTP+MQTT, runnable as a CLI and importable as a test fixture.",
+  "main": "lib/sim-device.js",
+  "bin": {
+    "device-sim": "index.js"
+  },
+  "scripts": {
+    "start": "node index.js"
+  },
+  "dependencies": {
+    "mqtt": "^5.10.1",
+    "ws": "^8.18.0"
+  }
+}

@@ -4,40 +4,32 @@
   <div class="panel left-panel">
     <div class="panel-header">
       <h2>Device Types</h2>
-      @if (isAdmin) {
-        <button mat-mini-fab color="primary" (click)="openDeviceTypeDialog()" matTooltip="Add device type">
-          <mat-icon>add</mat-icon>
-        </button>
-      }
     </div>
 
-    <mat-nav-list>
-      @for (device of deviceTypes; track device.id) {
-        <mat-list-item
-          [class.selected]="selectedDevice?.id === device.id"
-          (click)="selectDevice(device)">
-          <div class="device-item">
-            <div class="device-info">
-              <span class="device-type">{{ device.type }}</span>
-              <span class="device-version">v{{ device.version }}</span>
-            </div>
-            @if (isAdmin) {
-              <div class="device-actions" (click)="$event.stopPropagation()" (keydown)="$event.stopPropagation()" tabindex="-1" role="group">
-                <button mat-icon-button matTooltip="Edit" (click)="openDeviceTypeDialog(device)">
-                  <mat-icon>edit</mat-icon>
-                </button>
-                <button mat-icon-button color="warn" matTooltip="Delete" (click)="deleteDeviceType(device)">
-                  <mat-icon>delete</mat-icon>
-                </button>
+    <div class="type-list">
+      @for (group of deviceTypeGroups; track group.type) {
+        <div class="type-group">
+          <div class="type-header" (click)="toggleType(group.type)" (keydown.enter)="toggleType(group.type)" (keydown.space)="toggleType(group.type)" [class.expanded]="selectedType === group.type" tabindex="0" role="button" [attr.aria-expanded]="selectedType === group.type">
+            <mat-icon class="expand-icon">chevron_right</mat-icon>
+            <span class="type-name">{{ group.type }}</span>
+            <span class="version-count">{{ group.versions.length }}</span>
+          </div>
+          @if (selectedType === group.type) {
+            @for (device of group.versions; track device.id) {
+              <div class="version-item" [class.selected]="selectedDevice?.id === device.id" (click)="selectDevice(device)" (keydown.enter)="selectDevice(device)" (keydown.space)="selectDevice(device)" tabindex="0" role="button">
+                <span class="version-label">v{{ device.version }}</span>
+                @if (device.default_name) {
+                  <span class="version-name">{{ device.default_name }}</span>
+                }
               </div>
             }
-          </div>
-        </mat-list-item>
+          }
+        </div>
       }
-      @if (deviceTypes.length === 0) {
-        <p class="empty-hint">No device types yet. Click + to add one.</p>
+      @if (deviceTypeGroups.length === 0) {
+        <p class="empty-hint">No device types in catalog.</p>
       }
-    </mat-nav-list>
+    </div>
   </div>
 
   <!-- Right panel: actions -->
@@ -45,11 +37,6 @@
     @if (selectedDevice) {
       <div class="panel-header">
         <h2>Actions — {{ selectedDevice.type }} v{{ selectedDevice.version }}</h2>
-        @if (isAdmin) {
-          <button mat-mini-fab color="primary" (click)="openActionDialog()" matTooltip="Add action">
-            <mat-icon>add</mat-icon>
-          </button>
-        }
       </div>
 
       @if (loading) {
@@ -58,58 +45,66 @@
 
       <div class="action-grid">
         @for (action of actions; track action.id) {
-          <mat-card class="action-card">
-            <mat-card-header>
-              <mat-card-title>{{ action.default_name }}</mat-card-title>
-              <mat-card-subtitle>
-                <span class="chip" [class.telemetry]="action.mqtt_action_type === 'telemetry'">
+          <div class="action-card lattice-card">
+            <div class="action-card-header">
+              <span class="action-title">{{ action.default_name }}</span>
+              <div class="action-chips">
+                <span class="type-chip"
+                  [class.command]="action.mqtt_action_type === 'command'"
+                  [class.telemetry]="action.mqtt_action_type === 'telemetry'">
                   {{ action.mqtt_action_type }}
                 </span>
-                <span class="mqtt-name">{{ action.mqtt_action_name }}</span>
-              </mat-card-subtitle>
-            </mat-card-header>
-            <mat-card-content>
+              </div>
+            </div>
+
+            <div class="mqtt-name">{{ action.mqtt_action_name }}</div>
+
+            <div class="action-meta">
               <div class="meta-row">
-                <span class="label">Implementation</span>
-                <span>{{ action.implementation_type }}</span>
+                <span class="meta-label">Implementation</span>
+                <span class="meta-value">{{ action.implementation_type }}</span>
               </div>
               <div class="meta-row">
-                <span class="label">Pins</span>
-                <span>{{ pinsLabel(action) }}</span>
+                <span class="meta-label">Pins</span>
+                <span class="meta-value">{{ pinsLabel(action) }}</span>
               </div>
-              @if (action.google_type_id) {
+              @if (action.google_action_type) {
                 <div class="meta-row">
-                  <span class="label">Google Type</span>
-                  <span>{{ googleTypeName(action.google_type_id) }}</span>
+                  <span class="meta-label">Google Type</span>
+                  <span class="meta-value">{{ action.google_action_type }}</span>
                 </div>
               }
-              @if (action.google_trait_ids.length) {
-                <div class="meta-row">
-                  <span class="label">Traits</span>
-                  <span>{{ googleTraitNames(action.google_trait_ids) }}</span>
+              @if (action.google_traits.length) {
+                <div class="meta-row meta-row-traits">
+                  <span class="meta-label">Traits</span>
+                  <div class="trait-chip-row">
+                    @for (trait of action.google_traits; track trait.id) {
+                      <span class="trait-chip-admin"
+                        [class.default-trait]="trait.is_default"
+                        (click)="setDefaultTrait(action, trait)"
+                        (keydown.enter)="setDefaultTrait(action, trait)"
+                        tabindex="0" role="button"
+                        [matTooltip]="trait.is_default ? 'Default trait' : 'Set as default'">
+                        {{ traitShortName(trait) }}
+                        @if (trait.is_default) {
+                          <mat-icon class="default-star">star</mat-icon>
+                        }
+                      </span>
+                    }
+                  </div>
                 </div>
               }
-            </mat-card-content>
-            @if (isAdmin) {
-              <mat-card-actions align="end">
-                <button mat-button (click)="openActionDialog(action)">
-                  <mat-icon>edit</mat-icon> Edit
-                </button>
-                <button mat-button color="warn" (click)="deleteAction(action)">
-                  <mat-icon>delete</mat-icon> Delete
-                </button>
-              </mat-card-actions>
-            }
-          </mat-card>
+            </div>
+          </div>
         }
         @if (!loading && actions.length === 0) {
-          <p class="empty-hint">No actions yet. Click + to add one.</p>
+          <p class="empty-hint">No actions defined for this device type.</p>
         }
       </div>
     } @else {
       <div class="no-selection">
         <mat-icon>touch_app</mat-icon>
-        <p>Select a device type to manage its actions</p>
+        <p>Select a device type to view its actions</p>
       </div>
     }
   </div>

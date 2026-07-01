@@ -28,16 +28,16 @@ class DeviceActionsService {
       id: a.id,
       name: a.action_name,
       deviceName: a.user_device?.name ?? '',
-      type: googleActionTypes.find((g) => g.id === a.action.google_type_id)?.name,
-      googleType: googleActionTypes.find((g) => g.id === a.action.google_type_id),
-      googleTraits: await googleActionsTraitsService.GetActionDefinitionTraits(a.action_id),
+      type: googleActionTypes.find((g) => g.id === a.capability.google_type_id)?.name,
+      googleType: googleActionTypes.find((g) => g.id === a.capability.google_type_id),
+      googleTraits: await googleActionsTraitsService.GetActionDefinitionTraits(a.capability_id),
       actionName: a.action_name,
-      implementation_type: a.action.implementation_type,
+      implementation_type: a.capability.implementation_type,
       state: a.current_state,
       deviceId: a.user_device_id,
       online: a.user_device?.online ?? false,
       sortOrder: a.sort_order,
-      groupName: a.group_name ?? null,
+      groupName: a.group?.name ?? null,
     })));
   }
 
@@ -51,16 +51,16 @@ class DeviceActionsService {
       id: action.id,
       name: action.action_name,
       deviceName: '',
-      type: googleActionTypes.find((g) => g.id === action.action.google_type_id)?.name,
-      googleType: googleActionTypes.find((g) => g.id === action.action.google_type_id),
-      googleTraits: await googleActionsTraitsService.GetActionDefinitionTraits(action.action_id),
+      type: googleActionTypes.find((g) => g.id === action.capability.google_type_id)?.name,
+      googleType: googleActionTypes.find((g) => g.id === action.capability.google_type_id),
+      googleTraits: await googleActionsTraitsService.GetActionDefinitionTraits(action.capability_id),
       actionName: action.action_name,
-      implementation_type: action.action.implementation_type,
+      implementation_type: action.capability.implementation_type,
       state: action.current_state,
       deviceId: action.user_device_id,
       online: false,
       sortOrder: action.sort_order,
-      groupName: action.group_name ?? null,
+      groupName: action.group?.name ?? null,
     };
   }
 }

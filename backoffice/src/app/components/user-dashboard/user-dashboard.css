@@ -546,3 +546,34 @@
   margin-left: 4px;
   flex-shrink: 0;
 }
+
+/* ── Trait switcher strip ────────────────────────────────────────── */
+.trait-switcher {
+  display: flex;
+  justify-content: center;
+  gap: 2px;
+  padding-top: 6px;
+  border-top: 1px solid var(--border);
+  margin-top: auto;
+}
+
+.trait-chip {
+  width: 32px !important;
+  height: 32px !important;
+  line-height: 32px !important;
+  color: var(--text-muted);
+  transition: color 0.15s, background 0.15s;
+}
+
+.trait-chip mat-icon {
+  font-size: 18px;
+  width: 18px;
+  height: 18px;
+  line-height: 18px;
+}
+
+.trait-chip.active {
+  color: var(--color-primary, #4f8ef7);
+  background: color-mix(in srgb, var(--color-primary, #4f8ef7) 12%, transparent);
+  border-radius: 8px;
+}
