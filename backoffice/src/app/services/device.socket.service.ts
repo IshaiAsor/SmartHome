@@ -1,7 +1,7 @@
 // backoffice/src/app/services/device-socket.service.ts
 import { inject, Injectable } from '@angular/core';
 import { io, Socket } from 'socket.io-client';
-import { Observable, fromEvent } from 'rxjs';
+import { Observable } from 'rxjs';
 import { environment } from '../../environments/environment';
 import { AuthService } from './auth.service';
 @Injectable({
@@ -25,18 +25,17 @@ export class DeviceSocketService {
       }
     });
 
-    this.actionStateUpdate$ = fromEvent<{ actionId: number, state: unknown, commandId?: string }>(
-      this.socket as any, 'action_state_update'
-    );
-    this.deviceOnlineStatusChange$ = fromEvent<{ deviceId: number, online: boolean }>(
-      this.socket as any, 'device_status_change'
-    );
-    this.actionStatePending$ = fromEvent<{ actionId: number, commandId: string, state: unknown }>(
-      this.socket as any, 'action_state_pending'
-    );
-    this.actionStateFailed$ = fromEvent<{ actionId: number, commandId: string, lastState?: unknown }>(
-      this.socket as any, 'action_state_failed'
-    );
+    const socketEvent = <T>(event: string): Observable<T> =>
+      new Observable<T>(obs => {
+        const handler = (data: T) => obs.next(data);
+        this.socket.on(event, handler);
+        return () => { this.socket.off(event, handler); };
+      });
+
+    this.actionStateUpdate$ = socketEvent('action_state_update');
+    this.deviceOnlineStatusChange$ = socketEvent('device_status_change');
+    this.actionStatePending$ = socketEvent('action_state_pending');
+    this.actionStateFailed$ = socketEvent('action_state_failed');
   }
 
   publishActionState(id: number, actionState: string) {
